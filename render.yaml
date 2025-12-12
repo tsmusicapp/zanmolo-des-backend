@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: your-service-name
+    name: musiapp
     env: node
     buildCommand: npm install
     startCommand: npm start
