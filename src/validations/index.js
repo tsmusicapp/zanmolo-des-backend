@@ -1,0 +1,10 @@
+module.exports.authValidation = require('./auth.validation');
+module.exports.userValidation = require('./user.validation');
+module.exports.musicValidation = require('./music.validation');
+module.exports.userSpaceValidation = require('./userSpace.validation');
+module.exports.jobValidation = require('./job.validation');
+module.exports.shareMusicValidation = require('./shareMusic.validation');
+module.exports.reportValidation = require('./report.validation');
+module.exports.purchaseValidation = require('./purchase.validation');
+module.exports.orderHistoryValidation = require('./orderHistory.validation');
+module.exports.gigValidation = require('./gig.validation');

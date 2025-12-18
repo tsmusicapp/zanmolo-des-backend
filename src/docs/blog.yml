@@ -1,0 +1,443 @@
+paths:
+  /blogs:
+    post:
+      summary: Create a blog
+      description: Create a new blog with music file and cover image upload to S3
+      tags: [Blogs]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - classification
+                - musicFile
+                - coverImage
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  description: Rich text HTML content
+                classification:
+                  type: string
+                  enum: [Pop, Rock, Jazz, Classical, Hip Hop, Electronic, Country, R&B, Reggae, Folk, Blues, Alternative, Indie, Metal, Punk, Funk, Soul, Gospel, Latin, World Music]
+                musicFile:
+                  type: string
+                  format: binary
+                  description: Music file to upload to S3
+                coverImage:
+                  type: string
+                  format: binary
+                  description: Cover image to upload to S3
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blog'
+        "400":
+          $ref: '#/components/responses/DuplicateEmail'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      summary: Get all blogs
+      description: Retrieve all active blogs with optional filtering and pagination
+      tags: [Blogs]
+      parameters:
+        - in: query
+          name: title
+          schema:
+            type: string
+          description: Filter by blog title
+        - in: query
+          name: classification
+          schema:
+            type: string
+            enum: [Pop, Rock, Jazz, Classical, Hip Hop, Electronic, Country, R&B, Reggae, Folk, Blues, Alternative, Indie, Metal, Punk, Funk, Soul, Gospel, Latin, World Music]
+          description: Filter by music classification
+        - in: query
+          name: userName
+          schema:
+            type: string
+          description: Filter by creator username
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+          description: Sort by query in the form of field:desc/asc (ex. createdAt:desc)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          default: 10
+          description: Maximum number of blogs per page
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          default: 1
+          description: Page number
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Blog'
+                  page:
+                    type: integer
+                    example: 1
+                  limit:
+                    type: integer
+                    example: 10
+                  totalPages:
+                    type: integer
+                    example: 1
+                  totalResults:
+                    type: integer
+                    example: 1
+
+  /blogs/my-blogs:
+    get:
+      summary: Get current user's blogs
+      description: Retrieve all blogs created by the authenticated user
+      tags: [Blogs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: sortBy
+          schema:
+            type: string
+          description: Sort by query in the form of field:desc/asc (ex. createdAt:desc)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          default: 10
+          description: Maximum number of blogs per page
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          default: 1
+          description: Page number
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Blog'
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  totalResults:
+                    type: integer
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /blogs/trending:
+    get:
+      summary: Get trending blogs
+      description: Retrieve blogs sorted by play count, likes count, and creation date
+      tags: [Blogs]
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          default: 20
+          description: Maximum number of blogs per page
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+          default: 1
+          description: Page number
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Blog'
+                  page:
+                    type: integer
+                  limit:
+                    type: integer
+                  totalPages:
+                    type: integer
+                  totalResults:
+                    type: integer
+
+  /blogs/{blogId}:
+    get:
+      summary: Get a blog
+      description: Fetch a single blog by id
+      tags: [Blogs]
+      parameters:
+        - in: path
+          name: blogId
+          required: true
+          schema:
+            type: string
+          description: Blog id
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blog'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update a blog
+      description: Update blog details and optionally upload new music file or cover image
+      tags: [Blogs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: blogId
+          required: true
+          schema:
+            type: string
+          description: Blog id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                description:
+                  type: string
+                  description: Rich text HTML content
+                classification:
+                  type: string
+                  enum: [Pop, Rock, Jazz, Classical, Hip Hop, Electronic, Country, R&B, Reggae, Folk, Blues, Alternative, Indie, Metal, Punk, Funk, Soul, Gospel, Latin, World Music]
+                musicFile:
+                  type: string
+                  format: binary
+                  description: New music file to upload to S3 (optional)
+                coverImage:
+                  type: string
+                  format: binary
+                  description: New cover image to upload to S3 (optional)
+              minProperties: 1
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blog'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete a blog
+      description: Soft delete a blog (set isActive to false)
+      tags: [Blogs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: blogId
+          required: true
+          schema:
+            type: string
+          description: Blog id
+      responses:
+        "204":
+          description: No content
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /blogs/{blogId}/like:
+    post:
+      summary: Like or unlike a blog
+      description: Toggle like status for a blog
+      tags: [Blogs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: blogId
+          required: true
+          schema:
+            type: string
+          description: Blog id
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isLiked:
+                    type: boolean
+                    description: Whether the blog is now liked by the user
+                  likesCount:
+                    type: integer
+                    description: Total number of likes
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /blogs/{blogId}/comment:
+    post:
+      summary: Comment on a blog
+      description: Add a comment to a blog
+      tags: [Blogs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: blogId
+          required: true
+          schema:
+            type: string
+          description: Blog id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - comment
+              properties:
+                comment:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+                  description: Comment text
+              example:
+                comment: "Great music! Love the melody."
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blog'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /blogs/{blogId}/comment/{commentId}:
+    delete:
+      summary: Delete a comment
+      description: Delete a comment from a blog (only by comment owner or blog owner)
+      tags: [Blogs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: blogId
+          required: true
+          schema:
+            type: string
+          description: Blog id
+        - in: path
+          name: commentId
+          required: true
+          schema:
+            type: string
+          description: Comment id
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blog'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /blogs/{blogId}/play:
+    post:
+      summary: Play a blog
+      description: Increment the play count for a blog's music
+      tags: [Blogs]
+      parameters:
+        - in: path
+          name: blogId
+          required: true
+          schema:
+            type: string
+          description: Blog id
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Play count incremented"
+                  isPlay:
+                    type: integer
+                    description: New play count
+        "404":
+          $ref: '#/components/responses/NotFound'
