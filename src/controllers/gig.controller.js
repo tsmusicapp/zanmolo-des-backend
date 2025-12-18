@@ -6,12 +6,23 @@ const { gigService } = require('../services');
 
 const createGig = catchAsync(async (req, res) => {
   const mongoose = require('mongoose');
-  const { aiCustomInstructions, ...restBody } = req.body;
+  const { aiCustomInstructions, deliveryContent, ...restBody } = req.body;
   const gigBody = { 
     ...restBody, 
     additionalInformation: aiCustomInstructions || '',
     seller: new mongoose.Types.ObjectId(req.user.id) 
   };
+
+  // Handle deliverables data if provided
+  if (deliveryContent) {
+    gigBody.deliveryContent = {
+      deliveryTime: deliveryContent.deliveryTime || '1 week',
+      revisionRounds: parseInt(deliveryContent.revisionRounds) || 2,
+      deliverables: deliveryContent.deliverables || {},
+      additionalNotes: deliveryContent.additionalNotes || ''
+    };
+  }
+
   const gig = await gigService.createGig(gigBody);
   res.status(httpStatus.CREATED).send(gig);
 });

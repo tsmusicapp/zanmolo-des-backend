@@ -22,6 +22,7 @@ const orderHistoryRoute = require('./orderHistory.route');
 const squareRoute = require('./square.route');
 const stripeRoute = require('./stripe.route');
 const gigRoute = require('./gig.route');
+const servicesRoute = require('./services.route');
 const attachmentCleanupRoute = require('./attachmentCleanup.route');
 const aiRoute = require('./ai.route');
 const config = require('../../config/config');
@@ -120,6 +121,10 @@ const defaultRoutes = [
   {
     path: '/gigs',
     route: gigRoute,
+  },
+  {
+    path: '/services',
+    route: servicesRoute,
   },
   {
     path: '/attachment-cleanup',

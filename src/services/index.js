@@ -15,4 +15,5 @@ module.exports.orderHistoryService = require('./orderHistory.service');
 module.exports.stripeService = require('./stripe.service');
 module.exports.transactionService = require('./transaction.service');
 module.exports.gigService = require('./gig.service');
+module.exports.servicesService = require('./services.service');
 // module.exports.reportService = require('./report.service');

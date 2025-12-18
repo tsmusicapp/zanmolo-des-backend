@@ -176,6 +176,27 @@ const gigSchema = mongoose.Schema(
       type: String,
       default: "",
     },
+    deliveryContent: {
+      deliveryTime: {
+        type: String,
+        default: "1 week"
+      },
+      revisionRounds: {
+        type: Number,
+        default: 2,
+        min: 0,
+        max: 10
+      },
+      deliverables: {
+        type: Map,
+        of: Boolean,
+        default: {}
+      },
+      additionalNotes: {
+        type: String,
+        default: ""
+      }
+    },
     faq: [
       {
         question: {
