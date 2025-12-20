@@ -16,3 +16,4 @@ module.exports.purchaseController = require('./purchase.controller');
 module.exports.orderHistoryController = require('./orderHistory.controller');
 module.exports.gigController = require('./gig.controller');
 module.exports.aiController = require('./ai.controller');
+module.exports.ratingController = require('./rating.controller');

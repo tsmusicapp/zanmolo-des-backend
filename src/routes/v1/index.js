@@ -25,6 +25,7 @@ const gigRoute = require('./gig.route');
 const servicesRoute = require('./services.route');
 const attachmentCleanupRoute = require('./attachmentCleanup.route');
 const aiRoute = require('./ai.route');
+const ratingRoute = require('./rating.route');
 const config = require('../../config/config');
 
 const router = express.Router();
@@ -133,6 +134,10 @@ const defaultRoutes = [
   {
     path: '/ai',
     route: aiRoute,
+  },
+  {
+    path: '/ratings',
+    route: ratingRoute,
   }
 ];
 

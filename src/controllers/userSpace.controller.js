@@ -8,6 +8,7 @@ const LyricsMusic = require('../models/lyrics.model');
 const ShareMusicAsset = require('../models/shareMusicAsset.model');
 const User = require('../models/user.model');
 const uploadCover = require('./uploadCover.controller');
+const RatingService = require('../services/rating.service');
 
 const addSpace = catchAsync(async (req, res) => {
   const payload = {
@@ -113,35 +114,47 @@ const getSpace = catchAsync(async (req, res) => {
   const followersCount = await User.countDocuments({ following: req.user.id });
   result.followers = followersCount;
 
-  // Calculate order metrics
+  // Calculate order metrics using RatingService
   const Order = require('../models/order.model');
   const Gig = require('../models/gig.model');
   
-  // Get all gigs created by this user to calculate seller reviews
-  const userGigs = await Gig.find({ seller: req.user.id });
-  const totalReviews = userGigs.reduce((sum, gig) => sum + (gig.totalReviews || 0), 0);
-  result.orderQuantity = totalReviews; // Seller reviews received
-  result.sellerReviews = totalReviews; // Also set as sellerReviews for clarity
+  // Use RatingService to get comprehensive user ratings
+  const userRatings = await RatingService.getUserRatings(req.user.id);
   
-  // Calculate average gig rating for seller
-  const gigRatings = userGigs
-    .filter(gig => gig.averageRating && gig.averageRating > 0)
-    .map(gig => gig.averageRating);
-  result.orderRating = gigRatings.length > 0 
-    ? gigRatings.reduce((sum, rating) => sum + rating, 0) / gigRatings.length 
-    : 0;
+  if (userRatings) {
+    // Seller metrics
+    result.orderQuantity = userRatings.seller.totalReviews; // Seller reviews received
+    result.sellerReviews = userRatings.seller.totalReviews; // Also set as sellerReviews for clarity
+    result.orderRating = userRatings.seller.averageRating; // Average seller rating
+    result.sellerTotalOrders = userRatings.seller.totalOrders; // Total orders as seller
+    
+    // Buyer metrics
+    result.buyerQuantity = userRatings.buyer.totalOrders; // Buyer orders placed
+    result.buyerRating = userRatings.buyer.averageRating; // Average buyer rating
+  } else {
+    // Fallback to old calculation if RatingService fails
+    const userGigs = await Gig.find({ seller: req.user.id });
+    const totalReviews = userGigs.reduce((sum, gig) => sum + (gig.totalReviews || 0), 0);
+    result.orderQuantity = totalReviews;
+    result.sellerReviews = totalReviews;
+    
+    const gigRatings = userGigs
+      .filter(gig => gig.averageRating && gig.averageRating > 0)
+      .map(gig => gig.averageRating);
+    result.orderRating = gigRatings.length > 0 
+      ? gigRatings.reduce((sum, rating) => sum + rating, 0) / gigRatings.length 
+      : 0;
 
-  // Get all orders where user is the buyer (recruiterId) - this shows buyer orders placed
-  const buyerOrders = await Order.find({ recruiterId: req.user.id, status: 'complete' });
-  result.buyerQuantity = buyerOrders.length; // Buyer orders placed
-  
-  // Calculate average buyer rating from buyer ratings
-  const buyerRatings = buyerOrders
-    .filter(order => order.buyerRating && order.buyerRating > 0)
-    .map(order => order.buyerRating);
-  result.buyerRating = buyerRatings.length > 0 
-    ? buyerRatings.reduce((sum, rating) => sum + rating, 0) / buyerRatings.length 
-    : 0;
+    const buyerOrders = await Order.find({ recruiterId: req.user.id, status: 'complete' });
+    result.buyerQuantity = buyerOrders.length;
+    
+    const buyerRatings = buyerOrders
+      .filter(order => order.buyerRating && order.buyerRating > 0)
+      .map(order => order.buyerRating);
+    result.buyerRating = buyerRatings.length > 0 
+      ? buyerRatings.reduce((sum, rating) => sum + rating, 0) / buyerRatings.length 
+      : 0;
+  }
 
   res.send(result)
 });

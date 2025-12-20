@@ -4,6 +4,7 @@ const ApiError = require('../utils/ApiError');
 const { Mongoose } = require('mongoose');
 const { UserSpace, Gig } = require('../models');
 const transactionService = require('./transaction.service');
+const RatingService = require('./rating.service');
 
 const createOrder = async (orderData) => {
     console.log(orderData, 'data to save here')
@@ -265,72 +266,29 @@ const addReviewAndRating = async (orderId, {
     console.log('Order gig:', order.gig);
     console.log('Buyer rating:', buyerRating);
     console.log('Buyer review:', buyerReview);
-    console.log('Seller rating:', sellerRating);
-    console.log('Seller review:', sellerReview);
-    console.log('Order buyer:', order.buyer);
-    console.log('Order createdBy:', order.createdBy);
-    console.log('Order recruiterId:', order.recruiterId);
-    console.log('All parameters received:', { buyerRating, sellerRating, buyerReview, sellerReview });
     
     // Determine the buyer ID - recruiterId is the buyer, createdBy is the seller
     const buyerId = order.recruiterId || order.buyer;
     console.log('Determined buyer ID (recruiterId):', buyerId);
-    console.log('Order seller ID (createdBy):', order.createdBy);
-    console.log('Are buyer and seller the same?', buyerId && order.createdBy ? buyerId.toString() === order.createdBy.toString() : false);
     
     // Check if this is a gig order OR if it has gig information
     const isGigOrder = order.type === 'gig_order' || order.type === 'music_order' || order.gig;
     
     if (isGigOrder && order.gig && buyerRating && buyerReview && buyerId) {
         try {
-            console.log('Attempting to add review to gig:', order.gig);
-            const gig = await Gig.findById(order.gig);
-            if (gig) {
-                console.log('Gig found:', gig.title);
-                // Check if buyer hasn't already reviewed this gig
-                const existingReview = gig.reviews.find(review => 
-                    review.buyer.toString() === buyerId.toString()
-                );
-                
-                console.log('Existing review found:', !!existingReview);
-                
-                // TEMPORARY: Allow multiple reviews for testing
-                // if (!existingReview) {
-                if (true) { // Always allow for testing
-                    console.log('Adding review to gig...');
-                    console.log('Review data being added:', {
-                        buyer: buyerId,
-                        rating: buyerRating,
-                        comment: buyerReview,
-                        order: order._id
-                    });
-                    // Add review to gig
-                    await gig.addReview({
-                        buyer: buyerId,
-                        rating: buyerRating,
-                        comment: buyerReview,
-                        order: order._id
-                    });
-                    console.log('Review added to gig successfully');
-                    console.log('Updated gig reviews count:', gig.reviews.length);
-                    
-                    // Fetch the updated gig to verify the review was added correctly
-                    const updatedGig = await Gig.findById(order.gig).populate('reviews.buyer', 'name profilePicture');
-                    console.log('Updated gig reviews:', updatedGig.reviews.map(r => ({
-                        buyerId: r.buyer._id,
-                        buyerName: r.buyer.name,
-                        buyerProfilePicture: r.buyer.profilePicture,
-                        rating: r.rating,
-                        comment: r.comment
-                    })));
-                } else {
-                    console.log('Buyer has already reviewed this gig');
-                }
-            } else {
-                console.log('Gig not found with ID:', order.gig);
-            }
+            console.log('Adding review to gig using RatingService...');
+            
+            // Use the new RatingService to add review and update all metrics
+            await RatingService.addReviewToGig(order.gig, {
+                buyerId: buyerId,
+                rating: buyerRating,
+                comment: buyerReview,
+                orderId: order._id
+            });
+            
+            console.log('Review added successfully via RatingService');
         } catch (error) {
-            console.error('Error adding review to gig:', error);
+            console.error('Error adding review via RatingService:', error);
             // Don't throw error here, just log it
         }
     } else {
@@ -340,13 +298,6 @@ const addReviewAndRating = async (orderId, {
         console.log('- Has buyer rating:', !!buyerRating);
         console.log('- Has buyer review:', !!buyerReview);
         console.log('- Has buyer ID:', !!buyerId);
-        console.log('Order details:', {
-            id: order._id,
-            type: order.type,
-            gig: order.gig,
-            buyer: order.buyer,
-            createdBy: order.createdBy
-        });
     }
 
     return order;

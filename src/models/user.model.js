@@ -148,6 +148,44 @@ const userSchema = mongoose.Schema(
       type: Boolean,
       default: true
     },
+    
+    // Cached rating metrics for performance
+    sellerMetrics: {
+      averageRating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5
+      },
+      totalReviews: {
+        type: Number,
+        default: 0
+      },
+      totalOrders: {
+        type: Number,
+        default: 0
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now
+      }
+    },
+    buyerMetrics: {
+      averageRating: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 5
+      },
+      totalOrders: {
+        type: Number,
+        default: 0
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now
+      }
+    },
   },
   {
     timestamps: true,
