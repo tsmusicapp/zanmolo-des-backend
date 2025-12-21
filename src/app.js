@@ -80,7 +80,7 @@ app.use('/v1', routes);
 
 
 app.get('/', (req, res) => {
-  res.send('Welcome! Backend Music App Running Normaly.');
+  res.send('Welcome! Backend Music App Running Normaly. v1');
 });
 
 // Initialize attachment cleanup scheduler (runs every 24 hours)
