@@ -32,12 +32,15 @@ const getAssetsById = async (id, userId) => {
   const obj = asset.toObject();
 
   const userName = `${userSpace && userSpace.firstName || ''} ${userSpace && userSpace.lastName || ''}`.trim();
+  const creationOccupation = userSpace ? userSpace.creationOccupation || [] : [];
+  
   
   return {
     ...obj,
     id: obj._id.toString(),
     // Map database fields to frontend expected fields
     songName: obj.title || '',
+    creationOccupation: creationOccupation,
     musicImage: obj.assetImages && obj.assetImages.length > 0 ? obj.assetImages[0] : '',
     commercialUsePrice: obj.commercialLicensePrice || 0,
     personalUsePrice: obj.personalLicensePrice || 0,
@@ -86,19 +89,21 @@ const getAllAssets = async (userId) => {
     userSpaceMap[u.createdBy] = {
       userName: `${u.firstName || ''} ${u.lastName || ''}`.trim(),
       profilePicture: u.profilePicture || '',
+      creationOccupation: u.creationOccupation || [],
     };
   });
 
   // Format assets with userName and profilePicture from UserSpace
   const formatted = assets.map(asset => {
     const obj = asset.toObject();
-    const userInfo = userSpaceMap[obj.createdBy] || { userName: '', profilePicture: '' };
+    const userInfo = userSpaceMap[obj.createdBy] || { userName: '', profilePicture: '', creationOccupation: [] };
 
     return {
       ...obj,
       id: obj._id.toString(),
       // Map database fields to frontend expected fields
       songName: obj.title || '',
+      creationOccupation: userInfo.creationOccupation || [],
       musicImage: obj.assetImages && obj.assetImages.length > 0 ? obj.assetImages[0] : '',
       commercialUsePrice: obj.commercialLicensePrice || 0,
       personalUsePrice: obj.personalLicensePrice || 0,
@@ -140,6 +145,7 @@ const getMyAssets = async (userId) => {
 
   const userName = userSpace ? `${userSpace.firstName || ''} ${userSpace.lastName || ''}`.trim() : '';
   const profilePicture = userSpace && userSpace.profilePicture || '';
+  const creationOccupation = userSpace ? userSpace.creationOccupation || [] : [];
 
   // Format assets with userName and profilePicture from userSpace
   const formatted = assets.map(asset => {
@@ -149,6 +155,7 @@ const getMyAssets = async (userId) => {
       id: obj._id.toString(),
       // Map database fields to frontend expected fields
       songName: obj.title || '',
+      creationOccupation: creationOccupation,
       musicImage: obj.assetImages && obj.assetImages.length > 0 ? obj.assetImages[0] : '',
       commercialUsePrice: obj.commercialLicensePrice || 0,
       personalUsePrice: obj.personalLicensePrice || 0,
@@ -220,6 +227,7 @@ const getCreation = async (createdBy) => {
       musicImage: obj.workImages && obj.workImages.length > 0 ? obj.workImages[0] : '',
       // Additional fields that frontend expects
       musicStyle: obj.category || '',
+      creationOccupation:obj.creationOccupation || '',
       musicMood: obj.subcategory || '',
       musicInstrument: obj.softwareTool && obj.softwareTool.length > 0 ? obj.softwareTool.join(', ') : '',
       tags: obj.tags || [],
@@ -254,6 +262,7 @@ const getCreationById = async (id) => {
     title: obj.title,
     description: obj.description,
     workImages: obj.workImages || [],
+    creationOccupation:obj.creationOccupation || '',
     assetImages: obj.assetImages || [],
     category: obj.category || '',
     subcategory: obj.subcategory || '',
@@ -340,6 +349,7 @@ const getAllCreations = async (userId = null) => {
         description: obj.description,
         workImages: obj.workImages || [],
         assetImages: obj.assetImages || [],
+        creationOccupation:obj.creationOccupation || '',
         category: obj.category || '',
         subcategory: obj.subcategory || '',
         tags: obj.tags || [],

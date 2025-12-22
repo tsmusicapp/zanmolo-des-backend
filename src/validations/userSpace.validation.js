@@ -29,6 +29,10 @@ const addSpace = {
     orderRating: Joi.any().strip(),
     buyerQuantity: Joi.any().strip(),
     buyerRating: Joi.any().strip(),
+    sellerTotalOrders: Joi.any().strip(),
+    totalCollect: Joi.any().strip(),
+    followers: Joi.any().strip(),
+    country: Joi.any().strip(),
   }),
 };
 
@@ -61,6 +65,10 @@ const updateSpace = {
     orderRating: Joi.any().strip(),
     buyerQuantity: Joi.any().strip(),
     buyerRating: Joi.any().strip(),
+    sellerTotalOrders: Joi.any().strip(),
+    totalCollect: Joi.any().strip(),
+    followers: Joi.any().strip(),
+    country: Joi.any().strip(),
   }),
 };
 

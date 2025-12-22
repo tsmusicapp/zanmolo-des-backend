@@ -199,14 +199,19 @@ const queryGigs = async (filter, options, userId = null) => {
     populate: 'seller'
   });
 
-  // Fetch UserSpace data for all sellers to get location
+  // Fetch UserSpace data for all sellers to get location and creationOccupation
   if (gigs.results && gigs.results.length > 0) {
     for (const gig of gigs.results) {
       if (gig.seller) {
         try {
           const userSpace = await getSpace(gig.seller._id.toString());
-          if (userSpace && userSpace.location) {
-            gig.seller.location = userSpace.location;
+          if (userSpace) {
+            if (userSpace.location) {
+              gig.seller.location = userSpace.location;
+            }
+            if (userSpace.creationOccupation) {
+              gig.seller.creationOccupation = userSpace.creationOccupation;
+            }
           }
         } catch (error) {
           // Skip if userSpace data cannot be retrieved
@@ -242,7 +247,7 @@ const getGigById = async (id) => {
     }
   ]);
   
-  // Fetch UserSpace data for the seller to get location
+  // Fetch UserSpace data for the seller to get location and creationOccupation
   if (gig && gig.seller) {
     try {
       const userSpace = await getSpace(gig.seller._id.toString());
@@ -268,7 +273,16 @@ const getGigById = async (id) => {
           if (gig.seller.set) {
             gig.seller.set('location', sellerLocation);
           }
+        }
+        
+        // Add creationOccupation if available
+        if (userSpace.creationOccupation) {
+          gig.seller.creationOccupation = userSpace.creationOccupation;
           
+          // Also try to set it as a document property
+          if (gig.seller.set) {
+            gig.seller.set('creationOccupation', userSpace.creationOccupation);
+          }
         }
       }
     } catch (error) {
@@ -277,21 +291,29 @@ const getGigById = async (id) => {
   }
   
   // Alternative approach: If location is still not set, try to get it from UserSpace directly
-  if (gig && gig.seller && !gig.seller.location) {
+  if (gig && gig.seller && (!gig.seller.location || !gig.seller.creationOccupation)) {
     try {
       const userSpace = await getSpace(gig.seller._id.toString());
       if (userSpace) {
-        // Extract country from address if it contains country info
-        let country = null;
-        if (userSpace.address && userSpace.address.includes(',')) {
-          const addressParts = userSpace.address.split(',');
-          country = addressParts[0].trim(); // First part is usually country
+        // Handle location if not already set
+        if (!gig.seller.location) {
+          // Extract country from address if it contains country info
+          let country = null;
+          if (userSpace.address && userSpace.address.includes(',')) {
+            const addressParts = userSpace.address.split(',');
+            country = addressParts[0].trim(); // First part is usually country
+          }
+          
+          // Priority: location field, then country from address, then city, then state, then full address
+          const location = userSpace.location || country || userSpace.city || userSpace.state || userSpace.address;
+          if (location) {
+            gig.seller.location = location;
+          }
         }
         
-        // Priority: location field, then country from address, then city, then state, then full address
-        const location = userSpace.location || country || userSpace.city || userSpace.state || userSpace.address;
-        if (location) {
-          gig.seller.location = location;
+        // Handle creationOccupation if not already set
+        if (!gig.seller.creationOccupation && userSpace.creationOccupation) {
+          gig.seller.creationOccupation = userSpace.creationOccupation;
         }
       }
     } catch (error) {
@@ -302,9 +324,14 @@ const getGigById = async (id) => {
   // Convert to plain object to ensure proper serialization
   const plainGig = gig.toObject ? gig.toObject() : gig;
   
-  // Manually add location to the plain object since toObject() doesn't include it
-  if (gig.seller && gig.seller.location) {
-    plainGig.seller.location = gig.seller.location;
+  // Manually add location and creationOccupation to the plain object since toObject() doesn't include them
+  if (gig.seller) {
+    if (gig.seller.location) {
+      plainGig.seller.location = gig.seller.location;
+    }
+    if (gig.seller.creationOccupation) {
+      plainGig.seller.creationOccupation = gig.seller.creationOccupation;
+    }
   }
   
   return plainGig;

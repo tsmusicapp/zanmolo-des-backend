@@ -15,7 +15,7 @@ const shareAsset = catchAsync(async (req, res) => {
     updatedBy: req.user.id,
     userName: req.user.name,
   };
-  const shareMusicAsset = await shareMusicService.shareAsset(payload);
+  const shareMusicAsset = await shareMusicService.shareAsset(payload);  
   res.status(httpStatus.CREATED).send(shareMusicAsset);
 });
 
