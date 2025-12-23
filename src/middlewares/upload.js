@@ -79,7 +79,7 @@ const multer = require('multer');
 const path = require('path');
 
 const maxSize = 30 * 1024 * 1024; // 30MB
-const assetMaxSize = 2 * 1024 * 1024 * 1024; // 2GB for asset files (ZIP, etc.)
+const assetMaxSize = 500 * 1024 * 1024 * 1024; // 500GB for asset files (ZIP, RAR, etc.)
 const chatMaxSize = 100 * 1024 * 1024; // 100MB for chat attachments
 
 // AWS SDK v3 setup
