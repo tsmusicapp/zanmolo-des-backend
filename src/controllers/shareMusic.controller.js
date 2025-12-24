@@ -31,6 +31,13 @@ const getAssets = catchAsync(async (req, res) => {
     result = await shareMusicService.getAllAssets(null);
   }
 
+  // Add cache-busting headers for security
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+
   res.send(result);
 });
 // Tanpa auth: copy dari getAssets tapi tidak pakai req.user.id
@@ -43,6 +50,13 @@ const getAssetsUser = catchAsync(async (req, res) => {
 const getMyAssets = catchAsync(async (req, res) => {
   let result = [];
     result = await shareMusicService.getMyAssets(req.user.id);
+
+  // Add cache-busting headers for security
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
 
   res.send(result);
 });
@@ -62,6 +76,14 @@ const getAssetsById = catchAsync(async (req, res) => {
     }
     return res.send(music);
   }
+  
+  // Add cache-busting headers for security
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  
   return res.send(result)
 })
 

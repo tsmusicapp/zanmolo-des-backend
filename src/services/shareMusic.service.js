@@ -11,6 +11,12 @@ const mongoose = require('mongoose');
  * @returns {Promise<Job>}
  */
 const shareAsset = async (body) => {
+  // Extract file type from uploadAsset URL if present
+  if (body.uploadAsset && body.uploadAsset.includes('.')) {
+    const fileExtension = body.uploadAsset.split('.').pop().toLowerCase();
+    body.fileType = fileExtension;
+  }
+  
   return ShareMusicAsset.create(body);
 };
 
@@ -34,9 +40,28 @@ const getAssetsById = async (id, userId) => {
   const userName = `${userSpace && userSpace.firstName || ''} ${userSpace && userSpace.lastName || ''}`.trim();
   const creationOccupation = userSpace ? userSpace.creationOccupation || [] : [];
   
+  // Check if user has purchased this asset
+  let hasPurchased = false;
+  let isOwner = false;
   
-  return {
-    ...obj,
+  if (userId) {
+    // Check if user is the owner
+    isOwner = userId === asset.createdBy.toString();
+    
+    // Check if user has purchased this asset (only if not owner)
+    if (!isOwner) {
+      const { Sale } = require('../models');
+      const purchase = await Sale.findOne({ 
+        assetId: id, 
+        buyerId: userId,
+        status: 'completed'
+      });
+      hasPurchased = !!purchase;
+    }
+  }
+  
+  // Create base response object without sensitive fields
+  const baseResponse = {
     id: obj._id.toString(),
     // Map database fields to frontend expected fields
     songName: obj.title || '',
@@ -44,9 +69,6 @@ const getAssetsById = async (id, userId) => {
     musicImage: obj.assetImages && obj.assetImages.length > 0 ? obj.assetImages[0] : '',
     commercialUsePrice: obj.commercialLicensePrice || 0,
     personalUsePrice: obj.personalLicensePrice || 0,
-    music: obj.uploadAsset || '',
-    audioSrc: obj.uploadAsset || '',
-    musicAudio: obj.uploadAsset || '',
     // Additional fields that frontend expects
     musicStyle: obj.category || '',
     musicMood: obj.subcategory || '',
@@ -56,17 +78,68 @@ const getAssetsById = async (id, userId) => {
     singerName: userName || '',
     composerName: userName || '',
     fileSize: obj.fileSize || 0,
-    // Keep original fields for backward compatibility
+    fileType: (() => {
+      // If fileType is already set, use it
+      if (obj.fileType && obj.fileType.trim()) {
+        return obj.fileType;
+      }
+      // Otherwise, extract from uploadAsset URL for backward compatibility
+      if (obj.uploadAsset && obj.uploadAsset.includes('.')) {
+        return obj.uploadAsset.split('.').pop().toLowerCase();
+      }
+      return '';
+    })(), // Safe to expose - just the extension
+    // Keep original fields for backward compatibility (non-sensitive)
     title: obj.title,
     assetImages: obj.assetImages,
     commercialLicensePrice: obj.commercialLicensePrice,
     personalLicensePrice: obj.personalLicensePrice,
-    uploadAsset: obj.uploadAsset,
+    extendedCommercialPrice: obj.extendedCommercialPrice,
+    gameEnginePrice: obj.gameEnginePrice,
+    broadcastFilmPrice: obj.broadcastFilmPrice,
+    extendedRedistributionPrice: obj.extendedRedistributionPrice,
+    educationPrice: obj.educationPrice,
+    description: obj.description,
+    category: obj.category,
+    subcategory: obj.subcategory,
+    embeds: obj.embeds,
+    additionalInformation: obj.additionalInformation,
+    basicParametersText: obj.basicParametersText,
+    classificationParametersText: obj.classificationParametersText,
+    likes: obj.likes,
+    status: obj.status,
+    views: obj.views,
+    createdBy: obj.createdBy,
+    updatedBy: obj.updatedBy,
+    comments: obj.comments,
+    createdAt: obj.createdAt,
+    updatedAt: obj.updatedAt,
+    isFree: obj.isFree,
+    softwareTools: obj.softwareTools,
     // User info
     profilePicture: userSpace && userSpace.profilePicture || '',
     hiring: userSpace && userSpace.hiring || '',
     userName: userName,
+    // Purchase status flags
+    hasPurchased: hasPurchased,
+    isOwner: isOwner,
   };
+
+  // Only add sensitive asset URLs if user has legitimate access AND is making an authenticated download request
+  // For regular viewing, we never expose URLs even to owners for maximum security
+  if ((isOwner || hasPurchased) && false) { // Temporarily disabled for maximum security
+    const assetUrl = obj.uploadAsset || '';
+    return {
+      ...baseResponse,
+      music: assetUrl, // Only for authorized users
+      audioSrc: assetUrl, // Only for authorized users
+      musicAudio: assetUrl, // Only for authorized users
+      uploadAsset: assetUrl, // Only for authorized users
+    };
+  } else {
+    // For ALL users (including owners), completely omit these fields for security
+    return baseResponse;
+  }
 };
 
 
@@ -98,8 +171,9 @@ const getAllAssets = async (userId = null) => {
     const obj = asset.toObject();
     const userInfo = userSpaceMap[obj.createdBy] || { userName: '', profilePicture: '', creationOccupation: [] };
 
+    // For general listing, never expose actual download URLs for security
+    // Users must purchase to get access to the actual files
     return {
-      ...obj,
       id: obj._id.toString(),
       // Map database fields to frontend expected fields
       songName: obj.title || '',
@@ -107,9 +181,6 @@ const getAllAssets = async (userId = null) => {
       musicImage: obj.assetImages && obj.assetImages.length > 0 ? obj.assetImages[0] : '',
       commercialUsePrice: obj.commercialLicensePrice || 0,
       personalUsePrice: obj.personalLicensePrice || 0,
-      music: obj.uploadAsset || '',
-      audioSrc: obj.uploadAsset || '',
-      musicAudio: obj.uploadAsset || '',
       // Additional fields that frontend expects
       musicStyle: obj.category || '',
       musicMood: obj.subcategory || '',
@@ -119,15 +190,48 @@ const getAllAssets = async (userId = null) => {
       singerName: userInfo.userName || '',
       composerName: userInfo.userName || '',
       fileSize: obj.fileSize || 0,
-      // Keep original fields for backward compatibility
+      fileType: (() => {
+        // If fileType is already set, use it
+        if (obj.fileType && obj.fileType.trim()) {
+          return obj.fileType;
+        }
+        // Otherwise, extract from uploadAsset URL for backward compatibility
+        if (obj.uploadAsset && obj.uploadAsset.includes('.')) {
+          return obj.uploadAsset.split('.').pop().toLowerCase();
+        }
+        return '';
+      })(), // Safe to expose - just the extension
+      // Keep original fields for backward compatibility (non-sensitive)
       title: obj.title,
       assetImages: obj.assetImages,
       commercialLicensePrice: obj.commercialLicensePrice,
       personalLicensePrice: obj.personalLicensePrice,
-      uploadAsset: obj.uploadAsset,
+      extendedCommercialPrice: obj.extendedCommercialPrice,
+      gameEnginePrice: obj.gameEnginePrice,
+      broadcastFilmPrice: obj.broadcastFilmPrice,
+      extendedRedistributionPrice: obj.extendedRedistributionPrice,
+      educationPrice: obj.educationPrice,
+      description: obj.description,
+      category: obj.category,
+      subcategory: obj.subcategory,
+      embeds: obj.embeds,
+      additionalInformation: obj.additionalInformation,
+      basicParametersText: obj.basicParametersText,
+      classificationParametersText: obj.classificationParametersText,
+      likes: obj.likes,
+      status: obj.status,
+      views: obj.views,
+      createdBy: obj.createdBy,
+      updatedBy: obj.updatedBy,
+      comments: obj.comments,
+      createdAt: obj.createdAt,
+      updatedAt: obj.updatedAt,
+      isFree: obj.isFree,
+      softwareTools: obj.softwareTools,
       // User info
       userName: userInfo.userName,
       profilePicture: userInfo.profilePicture,
+      // NOTE: music, audioSrc, musicAudio, uploadAsset fields are completely omitted for security
     };
   });
 
@@ -150,8 +254,11 @@ const getMyAssets = async (userId) => {
   // Format assets with userName and profilePicture from userSpace
   const formatted = assets.map(asset => {
     const obj = asset.toObject();
+    
+    // For maximum security, never expose download URLs in any API response
+    // Download access should be handled through a separate secure endpoint
+    
     return {
-      ...obj,
       id: obj._id.toString(),
       // Map database fields to frontend expected fields
       songName: obj.title || '',
@@ -159,9 +266,6 @@ const getMyAssets = async (userId) => {
       musicImage: obj.assetImages && obj.assetImages.length > 0 ? obj.assetImages[0] : '',
       commercialUsePrice: obj.commercialLicensePrice || 0,
       personalUsePrice: obj.personalLicensePrice || 0,
-      music: obj.uploadAsset || '',
-      audioSrc: obj.uploadAsset || '',
-      musicAudio: obj.uploadAsset || '',
       // Additional fields that frontend expects
       musicStyle: obj.category || '',
       musicMood: obj.subcategory || '',
@@ -171,15 +275,51 @@ const getMyAssets = async (userId) => {
       singerName: userName || '',
       composerName: userName || '',
       fileSize: obj.fileSize || 0,
-      // Keep original fields for backward compatibility
+      fileType: (() => {
+        // If fileType is already set, use it
+        if (obj.fileType && obj.fileType.trim()) {
+          return obj.fileType;
+        }
+        // Otherwise, extract from uploadAsset URL for backward compatibility
+        if (obj.uploadAsset && obj.uploadAsset.includes('.')) {
+          return obj.uploadAsset.split('.').pop().toLowerCase();
+        }
+        return '';
+      })(), // Safe to expose - just the extension
+      // Keep original fields for backward compatibility (non-sensitive)
       title: obj.title,
       assetImages: obj.assetImages,
       commercialLicensePrice: obj.commercialLicensePrice,
       personalLicensePrice: obj.personalLicensePrice,
-      uploadAsset: obj.uploadAsset,
+      extendedCommercialPrice: obj.extendedCommercialPrice,
+      gameEnginePrice: obj.gameEnginePrice,
+      broadcastFilmPrice: obj.broadcastFilmPrice,
+      extendedRedistributionPrice: obj.extendedRedistributionPrice,
+      educationPrice: obj.educationPrice,
+      description: obj.description,
+      category: obj.category,
+      subcategory: obj.subcategory,
+      embeds: obj.embeds,
+      additionalInformation: obj.additionalInformation,
+      basicParametersText: obj.basicParametersText,
+      classificationParametersText: obj.classificationParametersText,
+      likes: obj.likes,
+      status: obj.status,
+      views: obj.views,
+      createdBy: obj.createdBy,
+      updatedBy: obj.updatedBy,
+      comments: obj.comments,
+      createdAt: obj.createdAt,
+      updatedAt: obj.updatedAt,
+      isFree: obj.isFree,
+      softwareTools: obj.softwareTools,
       // User info
       userName,
       profilePicture,
+      // Owner flags
+      isOwner: true,
+      hasPurchased: false, // Not applicable for own assets
+      // NOTE: music, audioSrc, musicAudio, uploadAsset fields completely omitted for maximum security
     };
   });
 
