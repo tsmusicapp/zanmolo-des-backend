@@ -144,11 +144,21 @@ const getAssetsById = async (id, userId) => {
 
 
 
-const getAllAssets = async (userId = null) => {
-  // Fetch latest 30 assets sorted by creation date descending
-  const assets = await ShareMusicAsset.find()
+const getAllAssets = async (userId = null, category = null) => {
+  // Build query filter
+  let filter = {};
+  if (category && category !== 'All') {
+    filter.category = category;
+  }
+  
+  console.log('🎵 getAllAssets filter:', filter);
+  
+  // Fetch latest 30 assets sorted by creation date descending with category filter
+  const assets = await ShareMusicAsset.find(filter)
     .limit(30)
     .sort({ createdAt: -1 });
+    
+  console.log('🎵 Found assets:', assets.length);
 
   // Collect unique userIds from assets for batch fetching userSpace data
   const userIds = [...new Set(assets.map(asset => asset.createdBy.toString()))];
@@ -438,11 +448,21 @@ const getCreationById = async (id) => {
   };
 };
 
-const getAllCreations = async (userId = null) => {
-  // Fetch latest 30 creations sorted by creation date descending
-  const creations = await ShareMusicCreation.find()
+const getAllCreations = async (userId = null, category = null) => {
+  // Build query filter
+  let filter = {};
+  if (category && category !== 'All') {
+    filter.category = category;
+  }
+  
+  console.log('🎨 getAllCreations filter:', filter);
+  
+  // Fetch latest 30 creations sorted by creation date descending with category filter
+  const creations = await ShareMusicCreation.find(filter)
     .limit(30)
     .sort({ createdAt: -1 });
+    
+  console.log('🎨 Found creations:', creations.length);
 
   // Get blockedUsers if userId is provided
   let blockedUsers = [];

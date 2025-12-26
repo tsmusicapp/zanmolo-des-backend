@@ -22,13 +22,16 @@ const shareAsset = catchAsync(async (req, res) => {
 const getAssets = catchAsync(async (req, res) => {
   let result = [];
   
+  // Extract category from query parameters
+  const { category } = req.query;
+  
   // Check if user is authenticated
   if (req.user && req.user.id) {
-    // If authenticated, get assets with user context
-    result = await shareMusicService.getAllAssets(req.user.id);
+    // If authenticated, get assets with user context and category filter
+    result = await shareMusicService.getAllAssets(req.user.id, category);
   } else {
-    // If not authenticated, get assets without user context
-    result = await shareMusicService.getAllAssets(null);
+    // If not authenticated, get assets without user context but with category filter
+    result = await shareMusicService.getAllAssets(null, category);
   }
 
   // Add cache-busting headers for security
@@ -129,7 +132,11 @@ const getAllCreations = catchAsync(async (req, res) => {
   if (req.user && req.user.id) {
     userId = req.user.id;
   }
-  const result = await shareMusicService.getAllCreations(userId);
+  
+  // Extract category from query parameters
+  const { category } = req.query;
+  
+  const result = await shareMusicService.getAllCreations(userId, category);
   res.send(result);
 });
 
