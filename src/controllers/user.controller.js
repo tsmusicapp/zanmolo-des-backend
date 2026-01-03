@@ -155,6 +155,43 @@ const followUser = async (req, res) => {
   }
 };
 
+// Follow a user
+const unfollowUser = async (req, res) => {
+  try {
+    const userIdToUnfollow = req.params.userId; // The user being followed
+    const currentUserId = req.user.id; // The currently authenticated user
+
+    if (userIdToUnfollow === currentUserId) {
+      return res.status(400).json({ message: 'You cannot unfollow yourself' });
+    }
+
+    // Find the current user and the user to follow
+    const currentUser = await userService.getUserById(currentUserId);
+    const userToFollow = await userService.getUserById(userIdToUnfollow);
+
+    if (!userToFollow) {
+      return res.status(404).json({ message: 'User to follow not found' });
+    }
+
+    // Check if the user is NOT following the other user
+    if (!currentUser.following.includes(userIdToUnfollow)) {
+      return res.status(400).json({ message: 'You are not following this user' });
+    }
+
+    // Remove the user from the following list
+    currentUser.following = currentUser.following.filter(
+      id => id.toString() !== userIdToUnfollow.toString()
+    );
+
+    await currentUser.save();
+
+    return res.status(200).json({ message: 'User unfollowed successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error following user' });
+  }
+};
+
 const getMyFollowing = async (req, res) => {
   try {
     const currentUserId = req.user.id; // Get the current user id from the auth middleware
@@ -899,4 +936,5 @@ module.exports = {
   disconnectStripe,
   processWithdrawal,
   cancelAccount,
+  unfollowUser
 };

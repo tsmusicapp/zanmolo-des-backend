@@ -355,6 +355,7 @@ const getCreation = async (createdBy) => {
 
   const userName = userSpace ? `${userSpace.firstName || ''} ${userSpace.lastName || ''}`.trim() : '';
   const profilePicture = userSpace && userSpace.profilePicture || '';
+  const creationOccupation = userSpace ? userSpace.creationOccupation || [] : [];
 
   // Format creations with user information
   const formatted = creations.map(creation => {
@@ -367,7 +368,7 @@ const getCreation = async (createdBy) => {
       musicImage: obj.workImages && obj.workImages.length > 0 ? obj.workImages[0] : '',
       // Additional fields that frontend expects
       musicStyle: obj.category || '',
-      creationOccupation:obj.creationOccupation || '',
+      creationOccupation:creationOccupation || '',
       musicMood: obj.subcategory || '',
       musicInstrument: obj.softwareTool && obj.softwareTool.length > 0 ? obj.softwareTool.join(', ') : '',
       tags: obj.tags || [],

@@ -30,9 +30,12 @@ router
   .patch(auth('admin'), validate(userValidation.updateUser), userController.updateUser)
   .delete(auth('admin'), validate(userValidation.deleteUser), userController.deleteUser)
   .post(auth('user'), userController.followUser); // Only authenticated users can follow
-  // router
-  //   .route('/:userId/follow')
-  //   .post(auth('recruiter'), userController.followUser); // Only authenticated users can follow
+  router
+    .route('/follow/:userId')
+    .post(auth('recruiter', 'user'), userController.followUser); // Only authenticated users can follow
+  router
+    .route('/follow/:userId')
+    .delete(auth('recruiter', 'user'), userController.unfollowUser); // Only authenticated users can follow
 
 router
   .route('/me/following')
