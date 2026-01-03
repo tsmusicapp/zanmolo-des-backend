@@ -94,7 +94,7 @@ const getPurchaseHistory = async (userId, filter = {}, options = {}) => {
     const purchases = await Purchase.find(query)
       .populate({
         path: 'music',
-        select: 'songName musicImage music personalUsePrice commercialUsePrice myRole musicUsage musicStyle createdBy',
+        select: 'songName musicImage music personalUsePrice commercialUsePrice myRole musicUsage musicStyle createdBy title uploadAsset',
         populate: {
           path: 'createdBy',
           select: 'name email',
@@ -144,7 +144,7 @@ const getPurchaseHistory = async (userId, filter = {}, options = {}) => {
       return {
         id: purchase._id,
         assetId: musicData._id || null,
-        assetTitle: musicData.songName || 'Unknown Song',
+        assetTitle: musicData.title || 'Unknown Song',
         assetImage: musicData.musicImage || null,
         assetType: myRole.length > 0 ? myRole.join(', ') : 'Unknown',
         creatorName: creatorData.name || 'Unknown Creator',
@@ -161,7 +161,7 @@ const getPurchaseHistory = async (userId, filter = {}, options = {}) => {
         downloadCount: purchase.downloadCount || 0,
         downloadLimit: 10,
         canDownload: (purchase.downloadCount || 0) < 10 && purchase.status === 'completed',
-        musicFile: musicData.music || null,
+        musicFile: musicData.uploadAsset || null,
         assetDetails: {
           musicUsage: Array.isArray(musicData.musicUsage) ? musicData.musicUsage : [],
           musicStyle: musicData.musicStyle || '',

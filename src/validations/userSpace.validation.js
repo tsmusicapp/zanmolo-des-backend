@@ -55,6 +55,7 @@ const updateSpace = {
     x: Joi.string(),
     facebook: Joi.string(),
     instagram: Joi.string(),
+    linkedin: Joi.string(),
     location: Joi.string(),
     state: Joi.string(),
     city: Joi.string(),
