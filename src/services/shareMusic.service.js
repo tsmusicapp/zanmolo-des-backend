@@ -25,6 +25,23 @@ const shareAsset = async (body) => {
  * @param {string} userId
  * @returns {Promise<User>}
  */
+const updateAsset = async (assetId, body) => {
+  // Extract file type from uploadAsset URL if present
+  if (body.uploadAsset && body.uploadAsset.includes('.')) {
+    const fileExtension = body.uploadAsset.split('.').pop().toLowerCase();
+    body.fileType = fileExtension;
+  }
+  
+  return ShareMusicAsset.findByIdAndUpdate(assetId,
+  { ...body },
+  { new: true });
+};
+
+/**
+ * Get Music Assets by userId
+ * @param {string} userId
+ * @returns {Promise<User>}
+ */
 const getAssets = async (createdBy) => {
   return ShareMusicAsset.find({ createdBy });
 };
@@ -797,6 +814,7 @@ const getPurchases = async (userId) => {
 
 module.exports = {
   shareAsset,
+  updateAsset,
   getAssets,
   getAssetsById,
   shareCreation,

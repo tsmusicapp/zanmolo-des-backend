@@ -19,6 +19,20 @@ const shareAsset = catchAsync(async (req, res) => {
   res.status(httpStatus.CREATED).send(shareMusicAsset);
 });
 
+const updateAsset = catchAsync(async (req, res) => {
+  const assetId = req.params.assetId;
+  const { aiCustomInstructions, ...restBody } = req.body;
+  const payload = {
+    ...restBody,
+    additionalInformation: aiCustomInstructions || "",
+    createdBy: req.user.id,
+    updatedBy: req.user.id,
+    userName: req.user.name,
+  };
+  const shareMusicAsset = await shareMusicService.updateAsset(assetId, payload);  
+  res.status(httpStatus.CREATED).send(shareMusicAsset);
+});
+
 const getAssets = catchAsync(async (req, res) => {
   let result = [];
   
@@ -139,7 +153,6 @@ const getAllCreations = catchAsync(async (req, res) => {
   const result = await shareMusicService.getAllCreations(userId, category);
   res.send(result);
 });
-
 
 const addToCart = catchAsync(async (req, res) => {
 
@@ -287,6 +300,7 @@ const collectCreation = catchAsync(async (req, res) => {
 
 module.exports = {
   shareAsset,
+  updateAsset,
   getAssets,
   getAssetsUser,
   getAssetsById,
