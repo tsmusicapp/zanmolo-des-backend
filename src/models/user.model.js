@@ -186,6 +186,27 @@ const userSchema = mongoose.Schema(
         default: Date.now
       }
     },
+    
+    // Profession metadata synced from userSpace for easy access and validation
+    professionMetadata: {
+      creationOccupations: [{
+        type: String,
+        trim: true
+      }],
+      businessOccupation: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+      displayProfession: {
+        type: String,
+        default: ''
+      },
+      lastUpdated: {
+        type: Date,
+        default: Date.now
+      }
+    },
   },
   {
     timestamps: true,

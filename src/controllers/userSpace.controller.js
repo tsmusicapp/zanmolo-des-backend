@@ -9,11 +9,23 @@ const ShareMusicAsset = require('../models/shareMusicAsset.model');
 const User = require('../models/user.model');
 const uploadCover = require('./uploadCover.controller');
 const RatingService = require('../services/rating.service');
+const { validateProfessionFields, syncProfessionToUserModel } = require('../utils/professionValidator');
 
 const addSpace = catchAsync(async (req, res) => {
+  // Validate profession fields
+  const professionValidation = validateProfessionFields(
+    req.body.creationOccupation,
+    req.body.businessOccupation
+  );
+  
+  if (!professionValidation.isValid) {
+    throw new ApiError(httpStatus.BAD_REQUEST, professionValidation.message);
+  }
+
   const payload = {
     ...req.body,
-    businessOccupation: req.body.businessOccupation || '',
+    creationOccupation: professionValidation.creationOccupation || req.body.creationOccupation || [],
+    businessOccupation: professionValidation.businessOccupation || req.body.businessOccupation || '',
     createdBy: req.user.id,
     updatedBy: req.user.id,
   };
@@ -22,11 +34,16 @@ const addSpace = catchAsync(async (req, res) => {
     throw new ApiError(httpStatus.CONFLICT, 'Each user can only create one user space.');
   }
   const userSpace = await userSpaceService.addSpace(payload);
+  
+  // Sync profession data to User model
+  const professionMetadata = syncProfessionToUserModel(req.user.id, userSpace);
+  
   await User.findByIdAndUpdate(
     req.user.id,
     {
       name: `${userSpace.firstName || ''} ${userSpace.lastName || ''}`.trim(),
       profilePicture: userSpace.profilePicture || '',
+      ...professionMetadata,
     },
     { new: true }
   );
@@ -160,16 +177,40 @@ const getSpace = catchAsync(async (req, res) => {
 });
 
 const updateSpace = catchAsync(async (req, res) => {
+  // Validate profession fields if they're being updated
+  if (req.body.creationOccupation !== undefined || req.body.businessOccupation !== undefined) {
+    const professionValidation = validateProfessionFields(
+      req.body.creationOccupation,
+      req.body.businessOccupation
+    );
+    
+    if (!professionValidation.isValid) {
+      throw new ApiError(httpStatus.BAD_REQUEST, professionValidation.message);
+    }
+
+    // Update with validated profession fields
+    req.body.creationOccupation = professionValidation.creationOccupation;
+    req.body.businessOccupation = professionValidation.businessOccupation;
+  }
+
   const payload = {
     ...req.body,
     updatedBy: req.user.id,
   };
   const userSpace = await userSpaceService.updateSpace(req.user.id, payload);
+  
+  // Sync profession data to User model after update
+  const professionMetadata = syncProfessionToUserModel(req.user.id, userSpace);
+  
   // update user.userName if firstName or lastName changed
   if (payload.firstName || payload.lastName) {
     const name = `${payload.firstName || userSpace.firstName} ${payload.lastName || userSpace.lastName}`.trim();
-    await User.findByIdAndUpdate(req.user.id, { name }, { new: true });
+    await User.findByIdAndUpdate(req.user.id, { name, ...professionMetadata }, { new: true });
+  } else {
+    // Still sync profession metadata even if name isn't being updated
+    await User.findByIdAndUpdate(req.user.id, professionMetadata, { new: true });
   }
+  
   // update profilePicture if changed
   if (payload.profilePicture) {
     await User.findByIdAndUpdate(req.user.id, { profilePicture: payload.profilePicture }, { new: true });

@@ -339,6 +339,14 @@ const gigSchema = mongoose.Schema(
       pausedAt: Date,
       denialReason: String,
     },
+    
+    // Profession validation status - ensures work matches user's profile profession
+    professionValidationStatus: {
+      type: String,
+      enum: ['valid', 'warning', 'pending'],
+      default: 'pending',
+      help: 'Tracks whether the gig category matches the user\'s profile profession'
+    },
   },
   {
     timestamps: true,

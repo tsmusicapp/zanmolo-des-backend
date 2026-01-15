@@ -3,14 +3,40 @@ const pick = require('../utils/pick');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
 const { gigService } = require('../services');
+const { validateGigAgainstProfile } = require('../utils/professionValidator');
+const UserSpace = require('../models/userSpace.model');
+const User = require('../models/user.model');
 
 const createGig = catchAsync(async (req, res) => {
   const mongoose = require('mongoose');
   const { aiCustomInstructions, deliveryContent, ...restBody } = req.body;
+  
+  // Validate that the gig category matches user's profile profession
+  const userSpace = await UserSpace.findOne({ createdBy: req.user.id });
+  const user = await User.findById(req.user.id);
+  
+  let creationOccupation = userSpace?.creationOccupation || user?.professionMetadata?.creationOccupations || [];
+  let businessOccupation = userSpace?.businessOccupation || user?.professionMetadata?.businessOccupation || '';
+  
+  const professionValidation = validateGigAgainstProfile(
+    restBody.category,
+    restBody.subcategory,
+    creationOccupation,
+    businessOccupation
+  );
+  
+  if (!professionValidation.isValid && !professionValidation.warning) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      professionValidation.message
+    );
+  }
+  
   const gigBody = { 
     ...restBody, 
     additionalInformation: aiCustomInstructions || '',
-    seller: new mongoose.Types.ObjectId(req.user.id) 
+    seller: new mongoose.Types.ObjectId(req.user.id),
+    professionValidationStatus: professionValidation.warning ? 'warning' : 'valid'
   };
 
   // Handle deliverables data if provided
@@ -85,6 +111,31 @@ const getGigsByUser = catchAsync(async (req, res) => {
 });
 
 const updateGig = catchAsync(async (req, res) => {
+  // If category is being updated, validate against user's profile profession
+  if (req.body.category) {
+    const userSpace = await UserSpace.findOne({ createdBy: req.user.id });
+    const user = await User.findById(req.user.id);
+    
+    let creationOccupation = userSpace?.creationOccupation || user?.professionMetadata?.creationOccupations || [];
+    let businessOccupation = userSpace?.businessOccupation || user?.professionMetadata?.businessOccupation || '';
+    
+    const professionValidation = validateGigAgainstProfile(
+      req.body.category,
+      req.body.subcategory || '',
+      creationOccupation,
+      businessOccupation
+    );
+    
+    if (!professionValidation.isValid && !professionValidation.warning) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        professionValidation.message
+      );
+    }
+    
+    req.body.professionValidationStatus = professionValidation.warning ? 'warning' : 'valid';
+  }
+  
   const gig = await gigService.updateGigById(req.params.gigId, req.body, req.user.id);
   res.send(gig);
 });
