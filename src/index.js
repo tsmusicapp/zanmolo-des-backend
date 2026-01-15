@@ -4,8 +4,9 @@ const { Server } = require('socket.io');
 const app = require('./app');
 const config = require('./config/config');
 const logger = require('./config/logger');
-const ChatService = require('./services/chat.service'); // New service for chat logic
-const { initializeCronJobs } = require('./utils/cronJobs'); // Initialize cron jobs
+const ChatService = require('./services/chat.service');
+const { initializeCronJobs } = require('./utils/cronJobs');
+const AttachmentCleanupService = require('./services/attachmentCleanup.service');
 
 let server;
 global.__databaseMongo;
@@ -27,13 +28,33 @@ mongoose.connect(config.mongoose.url, config.mongoose.options).then(() => {
   logger.info('Connected to MongoDB');
   __databaseMongo = mongoose.connection.db;
 
-  // Initialize cron jobs
+  // Initialize cron jobs (after DB connected)
   initializeCronJobs();
+
+  // Initialize attachment cleanup scheduler (after DB connected)
+  if (config.env !== 'test') {
+    logger.info('Initializing attachment cleanup scheduler...');
+    AttachmentCleanupService.scheduleCleanup(24);
+  }
 
   // Start HTTP server
   server = httpServer.listen(config.port, () => {
     logger.info(`Listening to port ${config.port}`);
   });
+}).catch((error) => {
+  logger.error('MongoDB connection failed:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  logger.error('Unhandled Rejection:', err);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception:', err);
+  process.exit(1);
 });
 
 // Active users map (consider replacing with Redis for scalability)

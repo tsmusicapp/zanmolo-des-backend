@@ -83,11 +83,9 @@ app.get('/', (req, res) => {
   res.send('Welcome! Backend Music App Running Normaly. v4');
 });
 
-// Initialize attachment cleanup scheduler (runs every 24 hours)
-if (config.env !== 'test') {
-  console.log('Initializing attachment cleanup scheduler...');
-  AttachmentCleanupService.scheduleCleanup(24); // Run every 24 hours
-}
+// Initialize attachment cleanup scheduler (moved to index.js after DB connect)
+// Removed from here to prevent running before MongoDB is ready
+
 // send back a 404 error for any unknown api request
 app.use((req, res, next) => {
   next(new ApiError(httpStatus.NOT_FOUND, 'Not found'));
