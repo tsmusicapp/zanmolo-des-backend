@@ -1,15 +1,8 @@
-const nodemailer = require('nodemailer');
-const config = require('../config/config');
-const logger = require('../config/logger');
+const { Resend } = require("resend");
+const config = require("../config/config");
+const logger = require("../config/logger");
 
-const transport = nodemailer.createTransport(config.email.smtp);
-/* istanbul ignore next */
-if (config.env !== 'test') {
-  transport
-    .verify()
-    .then(() => logger.info('Connected to email server'))
-    .catch(() => logger.warn('Unable to connect to email server. Make sure you have configured the SMTP options in .env'));
-}
+const resend = new Resend(config.email.resendApiKey);
 
 /**
  * Send an email
@@ -20,8 +13,26 @@ if (config.env !== 'test') {
  * @returns {Promise}
  */
 const sendEmail = async (to, subject, text, html) => {
-  const msg = { from: config.email.from, to, subject, text, html };
-  await transport.sendMail(msg);
+  try {
+    const { data, error } = await resend.emails.send({
+      from: config.email.from,
+      to,
+      subject,
+      text,
+      html,
+    });
+
+    if (error) {
+      logger.error("Error sending email:", error);
+      throw new Error(error.message);
+    }
+
+    logger.info("Email sent successfully:", data);
+    return data;
+  } catch (error) {
+    logger.error("Error sending email:", error);
+    throw error;
+  }
 };
 
 /**
@@ -31,7 +42,7 @@ const sendEmail = async (to, subject, text, html) => {
  * @returns {Promise}
  */
 const sendResetPasswordEmail = async (to, token) => {
-  const subject = 'Reset password';
+  const subject = "Reset password";
   // replace this url with the link to the reset password page of your front-end app
   const resetPasswordUrl = `http://link-to-app/reset-password?token=${token}`;
   const text = `Dear user,
@@ -47,7 +58,7 @@ If you did not request any password resets, then ignore this email.`;
  * @returns {Promise}
  */
 const sendVerificationEmail = async (to, token) => {
-  const subject = 'Email Verification';
+  const subject = "Email Verification";
   const verificationEmailUrl = `https://api.pallavin.com/v1/auth/verify-email?token=${token}`;
   const text = `Dear user,\nTo verify your email, click on this link: ${verificationEmailUrl}\nIf you did not create an account, then ignore this email.`;
   const html = `
@@ -63,8 +74,9 @@ const sendVerificationEmail = async (to, token) => {
   await sendEmail(to, subject, text, html);
 };
 
+// sendEmail("langesh105@gmail.com", "Test Email", "Test Email", "Test Email");
+
 module.exports = {
-  transport,
   sendEmail,
   sendResetPasswordEmail,
   sendVerificationEmail,
