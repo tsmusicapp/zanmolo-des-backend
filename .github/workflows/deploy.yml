@@ -1,0 +1,43 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main 
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          
+
+      - name: Deploy via SSH
+        run: |
+          ssh -o StrictHostKeyChecking=no root@modelstation.online << 'EOF'
+            set -e
+
+            cd /var/www/html/pallavin-fe
+
+            # pull latest changes
+            git pull
+
+            # install dependencies
+            npm install
+
+            # stop previous pm2 process if exists (ignore errors)
+            pm2 restart api-pallavin || true
+
+            # start new process
+            pm2 start npm --name api-pallavin -- start
+
+            # save pm2 state (so it restarts on reboot)
+            pm2 save
+          EOF
