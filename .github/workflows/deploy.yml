@@ -24,7 +24,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no root@modelstation.online << 'EOF'
             set -e
 
-            cd /var/www/html/pallavin-fe
+            cd /var/www/html/pallavin-be
 
             # pull latest changes
             git pull
