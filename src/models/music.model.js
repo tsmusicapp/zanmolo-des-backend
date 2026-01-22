@@ -1,5 +1,5 @@
-const mongoose = require('mongoose');
-const { toJSON, paginate } = require('./plugins');
+const mongoose = require("mongoose");
+const { toJSON, paginate } = require("./plugins");
 
 // Define the music schema with ratings
 const musicSchema = mongoose.Schema(
@@ -20,7 +20,7 @@ const musicSchema = mongoose.Schema(
     publisher: {
       type: String,
     },
-    albumname:{
+    albumname: {
       type: String,
     },
     publishTime: {
@@ -44,8 +44,8 @@ const musicSchema = mongoose.Schema(
     musicInstrument: {
       type: String,
     },
-    musicMood:{
-      type:String,
+    musicMood: {
+      type: String,
     },
     filmGenre: {
       type: String,
@@ -86,8 +86,8 @@ const musicSchema = mongoose.Schema(
     softwareTool: {
       type: String,
     },
-    description:{
-      type:String
+    description: {
+      type: String,
     },
     createdBy: {
       type: String,
@@ -96,14 +96,14 @@ const musicSchema = mongoose.Schema(
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: "User",
       },
     ],
     comments: [
       {
         userId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
+          ref: "User",
         },
         comment: {
           type: String,
@@ -112,7 +112,7 @@ const musicSchema = mongoose.Schema(
         userName: {
           type: String,
           required: true,
-        },  
+        },
         profilePicture: {
           type: String,
           required: true,
@@ -124,14 +124,14 @@ const musicSchema = mongoose.Schema(
         likes: [
           {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
+            ref: "User",
           },
         ],
         replies: [
           {
             userId: {
               type: mongoose.Schema.Types.ObjectId,
-              ref: 'User',
+              ref: "User",
             },
             reply: {
               type: String,
@@ -153,7 +153,7 @@ const musicSchema = mongoose.Schema(
       {
         userId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
+          ref: "User",
           required: true,
         },
         rating: {
@@ -177,7 +177,7 @@ const musicSchema = mongoose.Schema(
       {
         userId: {
           type: mongoose.Schema.Types.ObjectId,
-          ref: 'User',
+          ref: "User",
           required: true,
         },
         userName: {
@@ -187,10 +187,12 @@ const musicSchema = mongoose.Schema(
         profilePicture: {
           type: String,
         },
-        myRole: [{
-          type: String,
-          required: true,
-        }],
+        myRole: [
+          {
+            type: String,
+            required: true,
+          },
+        ],
         description: {
           type: String,
           required: true,
@@ -199,7 +201,7 @@ const musicSchema = mongoose.Schema(
           type: Date,
           default: Date.now,
         },
-      }
+      },
     ],
     // Fields for multi-role contribution tracking (deprecated - akan dihapus)
     isContribution: {
@@ -208,19 +210,21 @@ const musicSchema = mongoose.Schema(
     },
     originalMusicId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Music',
+      ref: "Music",
     },
     contributionDate: {
       type: Date,
     },
-    views: {
-      type: Number,
-      default: 0,
-    },
+    views: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Add plugins that convert mongoose to JSON and enable pagination
@@ -230,13 +234,16 @@ musicSchema.plugin(paginate);
 // Method to calculate average rating
 musicSchema.methods.calculateAverageRating = function () {
   if (this.ratings.length === 0) return 0;
-  const totalRating = this.ratings.reduce((sum, rating) => sum + rating.rating, 0);
+  const totalRating = this.ratings.reduce(
+    (sum, rating) => sum + rating.rating,
+    0,
+  );
   return totalRating / this.ratings.length;
 };
 
 /**
  * @typedef Music
  */
-const Music = mongoose.model('Music', musicSchema);
+const Music = mongoose.model("Music", musicSchema);
 
 module.exports = Music;
