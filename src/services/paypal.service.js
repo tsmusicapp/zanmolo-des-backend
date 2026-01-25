@@ -63,7 +63,7 @@ const exchangeAuthCode = async (code) => {
         },
       },
     );
-    
+
     const response = await axios.post(
       `${PAYPAL_API_URL}/v1/oauth2/token`,
       new URLSearchParams({
@@ -181,11 +181,93 @@ const createPayout = async ({
   }
 };
 
+/**
+ * Create a PayPal Order (Checkout V2)
+ * @param {Object} orderData - { amount, currency }
+ * @returns {Promise<Object>} Order Response
+ */
+const createOrder = async ({ amount, currency = "USD" }) => {
+  try {
+    const accessToken = await getAccessToken();
+    const payload = {
+      intent: "CAPTURE",
+      purchase_units: [
+        {
+          amount: {
+            currency_code: currency,
+            value: amount.toFixed(2),
+          },
+        },
+      ],
+    };
+
+    const response = await axios.post(
+      `${PAYPAL_API_URL}/v2/checkout/orders`,
+      payload,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "PayPal Create Order Error:",
+      error.response?.data || error.message,
+    );
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Failed to create PayPal order: ${
+        error.response?.data?.message || error.message
+      }`,
+    );
+  }
+};
+
+/**
+ * Capture a PayPal Order (Checkout V2)
+ * @param {string} orderId
+ * @returns {Promise<Object>} Capture Response
+ */
+const captureOrder = async (orderId) => {
+  try {
+    const accessToken = await getAccessToken();
+    const response = await axios.post(
+      `${PAYPAL_API_URL}/v2/checkout/orders/${orderId}/capture`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error(
+      "PayPal Capture Order Error:",
+      error.response?.data || error.message,
+    );
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      `Failed to capture PayPal order: ${
+        error.response?.data?.message || error.message
+      }`,
+    );
+  }
+};
+
 module.exports = {
   paypalService: {
     getAccessToken,
     exchangeAuthCode,
     getUserInfo,
     createPayout,
+    createOrder,
+    captureOrder,
   },
 };
