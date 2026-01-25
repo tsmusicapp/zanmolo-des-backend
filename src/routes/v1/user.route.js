@@ -1,80 +1,109 @@
-const express = require('express');
-const auth = require('../../middlewares/auth');
-const validate = require('../../middlewares/validate');
-const userValidation = require('../../validations/user.validation');
-const userController = require('../../controllers/user.controller');
-const { optionalAuth } = require('../../middlewares/auth');
+const express = require("express");
+const auth = require("../../middlewares/auth");
+const validate = require("../../middlewares/validate");
+const userValidation = require("../../validations/user.validation");
+const userController = require("../../controllers/user.controller");
+const { optionalAuth } = require("../../middlewares/auth");
 
 const router = express.Router();
 
 router
-  .route('/')
-  .post(auth('admin'), validate(userValidation.createUser), userController.createUser)
-  .get(auth('admin'), validate(userValidation.getUsers), userController.getUsers);
+  .route("/")
+  .post(
+    auth("admin"),
+    validate(userValidation.createUser),
+    userController.createUser,
+  )
+  .get(
+    auth("admin"),
+    validate(userValidation.getUsers),
+    userController.getUsers,
+  );
 
-// Stripe Connect routes - MUST be before /:userId route to avoid conflicts
-router.route('/stripe-connection').get(auth('user'), userController.getStripeConnection);
-router.route('/stripe-connect-url').post(auth('user'), userController.getStripeConnectUrl);
-router.route('/stripe-disconnect').delete(auth('user'), userController.disconnectStripe);
-
+// PayPal Connect routes - MUST be before /:userId route to avoid conflicts
 router
-  .route('/admin/all')
-  .get(auth('user'), userController.getAllUsersAdmin); // Auth user, role admin dicek di controller
+  .route("/paypal-connection")
+  .get(auth("user"), userController.getPaypalConnection);
+router
+  .route("/paypal-connect-url")
+  .post(auth("user"), userController.getPaypalConnectUrl);
+router
+  .route("/paypal-connect")
+  .post(auth("user"), userController.connectPaypal);
+router
+  .route("/paypal-disconnect")
+  .delete(auth("user"), userController.disconnectPaypal);
+
+router.route("/admin/all").get(auth("user"), userController.getAllUsersAdmin); // Auth user, role admin dicek di controller
 
 // Cancel account with 10-day grace period - MUST be before /:userId route
-router.route('/cancel-account').post(auth('user'), userController.cancelAccount);
+router
+  .route("/cancel-account")
+  .post(auth("user"), userController.cancelAccount);
 
 router
-  .route('/:userId')
-  .get(auth('admin'), validate(userValidation.getUser), userController.getUser)
-  .patch(auth('admin'), validate(userValidation.updateUser), userController.updateUser)
-  .delete(auth('admin'), validate(userValidation.deleteUser), userController.deleteUser)
-  .post(auth('user'), userController.followUser); // Only authenticated users can follow
-  router
-    .route('/follow/:userId')
-    .post(auth('recruiter', 'user'), userController.followUser); // Only authenticated users can follow
-  router
-    .route('/follow/:userId')
-    .delete(auth('recruiter', 'user'), userController.unfollowUser); // Only authenticated users can follow
+  .route("/:userId")
+  .get(auth("admin"), validate(userValidation.getUser), userController.getUser)
+  .patch(
+    auth("admin"),
+    validate(userValidation.updateUser),
+    userController.updateUser,
+  )
+  .delete(
+    auth("admin"),
+    validate(userValidation.deleteUser),
+    userController.deleteUser,
+  )
+  .post(auth("user"), userController.followUser); // Only authenticated users can follow
+router
+  .route("/follow/:userId")
+  .post(auth("recruiter", "user"), userController.followUser); // Only authenticated users can follow
+router
+  .route("/follow/:userId")
+  .delete(auth("recruiter", "user"), userController.unfollowUser); // Only authenticated users can follow
+
+router.route("/me/following").get(auth("user"), userController.getMyFollowing); // Only authenticated users can get their following list
 
 router
-  .route('/me/following')
-  .get(auth('user'), userController.getMyFollowing); // Only authenticated users can get their following list
+  .route("/admin/delete")
+  .post(auth("user"), userController.deleteUsersAdmin); // Hapus satu/banyak user (admin only)
 
 router
-  .route('/admin/delete')
-  .post(auth('user'), userController.deleteUsersAdmin); // Hapus satu/banyak user (admin only)
+  .route("/admin/send-message")
+  .post(auth("user"), userController.sendMessageAdmin); // Kirim pesan ke satu/banyak user (admin only)
+
+router.route("/admin/block").post(auth("user"), userController.blockUserAdmin); // Blokir user (admin only)
+router
+  .route("/admin/unblock")
+  .post(auth("user"), userController.unblockUserAdmin); // Unblock user (admin only)
 
 router
-  .route('/admin/send-message')
-  .post(auth('user'), userController.sendMessageAdmin); // Kirim pesan ke satu/banyak user (admin only)
-
-router.route('/admin/block').post(auth('user'), userController.blockUserAdmin); // Blokir user (admin only)
-router.route('/admin/unblock').post(auth('user'), userController.unblockUserAdmin); // Unblock user (admin only)
-
-router.route('/get-user-by-id/:userId')
+  .route("/get-user-by-id/:userId")
   .get(optionalAuth(), userController.getUserByIdPublic); // Optional auth
 
 // Get current user's saved billing information
-router.route('/me/billing').get(auth('user'), userController.getMyBilling);
+router.route("/me/billing").get(auth("user"), userController.getMyBilling);
 
 // Get current user info
-router.route('/me').get(auth('user'), userController.getMe);
+router.route("/me").get(auth("user"), userController.getMe);
 
 // Get current user's wallet balance
-router.route('/me/balance').get(auth('user'), userController.getMyBalance);
+router.route("/me/balance").get(auth("user"), userController.getMyBalance);
 
 // Get current user's transaction history
-router.route('/me/transactions').get(auth('user'), userController.getMyTransactions);
+router
+  .route("/me/transactions")
+  .get(auth("user"), userController.getMyTransactions);
 
 // Get transaction statistics for current user
-router.route('/me/transactions/stats').get(auth('user'), userController.getMyTransactionStats);
+router
+  .route("/me/transactions/stats")
+  .get(auth("user"), userController.getMyTransactionStats);
 
-// Process withdrawal request (Stripe Transfer)
-router.route('/me/withdraw').post(auth('user'), userController.processWithdrawal);
-
-
-
+// Process withdrawal request (PayPal Payout)
+router
+  .route("/me/withdraw")
+  .post(auth("user"), userController.processWithdrawal);
 
 module.exports = router;
 

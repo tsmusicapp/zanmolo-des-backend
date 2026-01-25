@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
-const validator = require('validator');
-const bcrypt = require('bcryptjs');
-const { toJSON, paginate } = require('./plugins');
-const { roles } = require('../config/roles');
+const mongoose = require("mongoose");
+const validator = require("validator");
+const bcrypt = require("bcryptjs");
+const { toJSON, paginate } = require("./plugins");
+const { roles } = require("../config/roles");
 
 const userSchema = mongoose.Schema(
   {
@@ -19,7 +19,7 @@ const userSchema = mongoose.Schema(
       lowercase: true,
       validate(value) {
         if (!validator.isEmail(value)) {
-          throw new Error('Invalid email');
+          throw new Error("Invalid email");
         }
       },
     },
@@ -30,24 +30,30 @@ const userSchema = mongoose.Schema(
       minlength: 8,
       validate(value) {
         if (!value.match(/\d/) || !value.match(/[a-zA-Z]/)) {
-          throw new Error('Password must contain at least one letter and one number');
+          throw new Error(
+            "Password must contain at least one letter and one number",
+          );
         }
       },
       private: true, // used by the toJSON plugin
     },
-    following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], 
-    likedSongs: [{
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Music' // Reference to the Music model
-    }],
-    blockedUsers: [{ 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'User' 
-    }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    likedSongs: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Music", // Reference to the Music model
+      },
+    ],
+    blockedUsers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
     role: {
       type: String,
       enum: roles,
-      default: 'user',
+      default: "user",
     },
     isEmailVerified: {
       type: Boolean,
@@ -55,7 +61,7 @@ const userSchema = mongoose.Schema(
     },
     profilePicture: {
       type: String,
-      default: '',
+      default: "",
     },
     collections: {
       type: [mongoose.Schema.Types.Mixed],
@@ -71,7 +77,7 @@ const userSchema = mongoose.Schema(
       merchantId: String,
       expiresAt: String,
       tokenType: String,
-      connectedAt: Date
+      connectedAt: Date,
     },
     squareMerchantInfo: {
       id: String,
@@ -82,135 +88,132 @@ const userSchema = mongoose.Schema(
       status: String,
       mainLocationId: String,
       createdAt: Date,
-      updatedAt: Date
+      updatedAt: Date,
     },
     squareRawData: {
       tokenResponse: Object, // Raw token response from Square
-      merchantResponse: Object, // Raw merchant response from Square  
+      merchantResponse: Object, // Raw merchant response from Square
       locationsResponse: Object, // Raw locations response from Square
-      lastUpdated: Date
+      lastUpdated: Date,
     },
     squareOAuthState: String,
     squareOAuthExpiry: Date,
     // Stripe integration
     stripeCustomerId: String,
-    stripePaymentMethods: [{
-      id: String,
-      brand: String,
-      last4: String,
-      expMonth: Number,
-      expYear: Number,
-      isDefault: Boolean,
-      createdAt: Date
-    }],
-    
+    stripePaymentMethods: [
+      {
+        id: String,
+        brand: String,
+        last4: String,
+        expMonth: Number,
+        expYear: Number,
+        isDefault: Boolean,
+        createdAt: Date,
+      },
+    ],
+
     // Stripe Connect for payouts
+    // Stripe Connect for payouts (Deprecated / Optional)
     stripeAccountId: String,
-    stripeAccountDetails: {
-      accountId: String,
-      accessToken: String, // Encrypt in production
-      refreshToken: String, // Encrypt in production
-      scope: String,
-      accountEmail: String,
-      accountName: String,
-      country: String,
-      currency: String,
-      chargesEnabled: Boolean,
-      payoutsEnabled: Boolean,
-      detailsSubmitted: Boolean,
-      connectedAt: Date,
-    },
+    stripeAccountDetails: Object,
     stripeConnectState: String,
     stripeConnectStateExpiry: Date,
-    
+
+    // PayPal Payouts
+    paypalPayerId: String,
+    paypalEmail: String, // Ensure we have the verified email
+    paypalConnectedAt: Date,
+
     // Wallet balance (USD)
     balance: {
       type: Number,
-      default: 0
+      default: 0,
     },
     billingInfo: {
       line1: String,
       city: String,
       state: String,
       postalCode: String,
-      country: String
+      country: String,
     },
-    
+
     // Account cancellation fields
     accountStatus: {
       type: String,
-      enum: ['active', 'cancelled', 'deleted'],
-      default: 'active'
+      enum: ["active", "cancelled", "deleted"],
+      default: "active",
     },
     accountCancelledAt: Date,
     accountDeletionScheduledFor: Date,
     isActive: {
       type: Boolean,
-      default: true
+      default: true,
     },
-    
+
     // Cached rating metrics for performance
     sellerMetrics: {
       averageRating: {
         type: Number,
         default: 0,
         min: 0,
-        max: 5
+        max: 5,
       },
       totalReviews: {
         type: Number,
-        default: 0
+        default: 0,
       },
       totalOrders: {
         type: Number,
-        default: 0
+        default: 0,
       },
       lastUpdated: {
         type: Date,
-        default: Date.now
-      }
+        default: Date.now,
+      },
     },
     buyerMetrics: {
       averageRating: {
         type: Number,
         default: 0,
         min: 0,
-        max: 5
+        max: 5,
       },
       totalOrders: {
         type: Number,
-        default: 0
+        default: 0,
       },
       lastUpdated: {
         type: Date,
-        default: Date.now
-      }
+        default: Date.now,
+      },
     },
-    
+
     // Profession metadata synced from userSpace for easy access and validation
     professionMetadata: {
-      creationOccupations: [{
-        type: String,
-        trim: true
-      }],
+      creationOccupations: [
+        {
+          type: String,
+          trim: true,
+        },
+      ],
       businessOccupation: {
         type: String,
         trim: true,
-        default: ''
+        default: "",
       },
       displayProfession: {
         type: String,
-        default: ''
+        default: "",
       },
       lastUpdated: {
         type: Date,
-        default: Date.now
-      }
+        default: Date.now,
+      },
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // add plugin that converts mongoose to json
@@ -238,9 +241,9 @@ userSchema.methods.isPasswordMatch = async function (password) {
   return bcrypt.compare(password, user.password);
 };
 
-userSchema.pre('save', async function (next) {
+userSchema.pre("save", async function (next) {
   const user = this;
-  if (user.isModified('password')) {
+  if (user.isModified("password")) {
     user.password = await bcrypt.hash(user.password, 8);
   }
   next();
@@ -249,6 +252,6 @@ userSchema.pre('save', async function (next) {
 /**
  * @typedef User
  */
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;

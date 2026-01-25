@@ -12,6 +12,7 @@ const {
   calculateBuyerPayment,
   calculateSellerPayout,
 } = require("../utils/feeCalculator");
+const { paypalService } = require("../services/paypal.service");
 
 // const httpStatus = require('http-status');
 // const ApiError = require('../utils/ApiError');
@@ -561,6 +562,148 @@ const addReviewAndRating = async (req, res) => {
       .send({ message: error.message });
   }
 };
+
+// Create PayPal Order (Checkout)
+const createPaypalOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user._id || req.user.id;
+
+    // Get order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Order not found");
+    }
+
+    // Calculate total amount (Buyer pays: Order + Fees + VAT)
+    const orderAmount = parseFloat(order.price);
+    const { calculateBuyerPayment } = require("../utils/feeCalculator");
+    const buyerPayment = calculateBuyerPayment(orderAmount);
+
+    // Create PayPal Order
+    const paypalOrder = await paypalService.createOrder({
+      amount: buyerPayment.totalAmount,
+      currency: "USD",
+    });
+
+    res.status(httpStatus.OK).send({
+      success: true,
+      orderId: paypalOrder.id, // PayPal Order ID
+      approvalUrl: paypalOrder.links.find((link) => link.rel === "approve")
+        ?.href,
+    });
+  } catch (error) {
+    console.error("Create PayPal Order Error:", error);
+    res
+      .status(error.statusCode || httpStatus.BAD_REQUEST)
+      .send({ message: error.message });
+  }
+};
+
+// Capture PayPal Order
+const capturePaypalOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params; // Backend Order ID
+    const { paypalOrderId } = req.body; // PayPal Order ID from frontend
+    const userId = req.user._id || req.user.id; // Backend User ID
+
+    if (!paypalOrderId) {
+      throw new ApiError(httpStatus.BAD_REQUEST, "PayPal Order ID is required");
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      throw new ApiError(httpStatus.NOT_FOUND, "Order not found");
+    }
+
+    // Capture Payment
+    const captureData = await paypalService.captureOrder(paypalOrderId);
+
+    if (captureData.status !== "COMPLETED") {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        "PayPal capture not completed",
+      );
+    }
+
+    // Get Fees
+    const orderAmount = parseFloat(order.price);
+    const {
+      calculateBuyerPayment,
+      calculateSellerPayout,
+    } = require("../utils/feeCalculator");
+    const buyerPayment = calculateBuyerPayment(orderAmount);
+    const sellerPayout = calculateSellerPayout(orderAmount);
+
+    const purchaseUnit = captureData.purchase_units?.[0];
+    const capture = purchaseUnit?.payments?.captures?.[0];
+
+    // Create Payment Record
+    const paymentRecord = {
+      orderId: orderId,
+      userId: userId,
+      amount: parseFloat(capture?.amount?.value || buyerPayment.totalAmount),
+      originalAmount: orderAmount,
+      currency: "USD",
+      paymentMethod: "paypal",
+      paymentId: capture?.id || paypalOrderId, // Use capture ID preferably
+      status: "completed",
+      processedAt: new Date(),
+      fees: {
+        buyer: buyerPayment,
+        seller: sellerPayout,
+        platformFee: buyerPayment.platformFee + buyerPayment.flatFee,
+        paypalFee: parseFloat(
+          capture?.seller_receivable_breakdown?.paypal_fee?.value || "0",
+        ),
+        netAmountToSeller: sellerPayout.netAmount, // TODO: Adjust if PayPal fee structure differs effectively
+      },
+    };
+
+    // Update Order
+    await Order.findByIdAndUpdate(orderId, {
+      $set: {
+        payment: paymentRecord,
+        paymentStatus: "paid",
+      },
+    });
+
+    // Automatically accept order (as per existing logic)
+    // Note: For cleanliness, we could just call the service or replicate acceptance logic.
+    // We'll mimic the acceptance logic from processOrderPayment:
+    // No explicit "accept" API call here, client usually does it or flow implies it.
+    // But the previous code had a specific fetch call to /accept.
+    // We should just update status if needed or let client handle the redirect.
+    // The previous processOrderPayment frontend logic did an explicit fetch to /accept.
+    // We can do it here server-side to be robust.
+
+    // Update status to accepted if it was pending/inprogress
+    // Actually, existing logic: frontend calls /accept. Let's stick to updating payment only here.
+    // Wait, processOrderPayment logic had: "Automatically accept the order after successful payment"
+    // Let's do it here.
+    if (order.status !== "accepted" && order.status !== "complete") {
+      await orderService.updateOrderStatus(
+        orderId,
+        "accepted",
+        "Order auto-accepted after payment",
+        userId,
+        "accepted",
+      );
+    }
+
+    res.status(httpStatus.OK).send({
+      success: true,
+      message: "Payment captured successfully",
+      orderId: orderId,
+    });
+  } catch (error) {
+    console.error("Capture PayPal Order Error:", error);
+    res
+      .status(error.statusCode || httpStatus.BAD_REQUEST)
+      .send({ message: error.message });
+  }
+};
+
 const getMyOrders = async (req, res) => {
   try {
     const user = req.user;
@@ -1449,5 +1592,7 @@ module.exports = {
   getRejectedCancellationOrders,
   adminAcceptCancellation,
   adminRejectCancellation,
+  createPaypalOrder,
+  capturePaypalOrder,
   getOrderPaymentDetails,
 };
