@@ -194,19 +194,133 @@ const getAssetsById = async (id, userId) => {
   }
 };
 
-const getAllAssets = async (userId = null, category = null) => {
-  // Build query filter
-  let filter = {};
+const getAllAssets = async (userId = null, filters = {}) => {
+  const { category, search, minPrice, maxPrice, fileTypes, minPoly, maxPoly } =
+    filters;
+
+  // 1. Initial Match Stage
+  const matchStage = {};
+
   if (category && category !== "All") {
-    filter.category = category;
+    matchStage.category = category;
   }
 
-  console.log("🎵 getAllAssets filter:", filter);
+  // We will collect all major filter groups here to ensure they are ANDed together
+  // e.g. (FileTypes matching...) AND (Prices matching...) AND (Search matching...)
+  const andConditions = [];
 
-  // Fetch latest 30 assets sorted by creation date descending with category filter
-  const assets = await ShareMusicAsset.find(filter)
-    .limit(30)
-    .sort({ createdAt: -1 });
+  // File Type Filtering
+  if (fileTypes && fileTypes.length > 0) {
+    // Escaping regex special characters
+    const escapedTypeStrings = fileTypes.map((type) =>
+      type.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+    );
+
+    // Regexes for uploadAsset URL matching
+    const uploadAssetRegexes = escapedTypeStrings.map(
+      (t) => new RegExp(t, "i"),
+    );
+
+    // Regex for basicParametersText matching
+    const typesJoined = escapedTypeStrings.join("|");
+    const basicParamRegex = new RegExp(
+      `File Format\\s*\\{\\{ANSWER:"[^"]*(?:${typesJoined})[^"]*"\\}\\}`,
+      "i",
+    );
+
+    andConditions.push({
+      $or: [
+        { fileType: { $in: fileTypes } },
+        { uploadAsset: { $in: uploadAssetRegexes } },
+        { basicParametersText: { $regex: basicParamRegex } },
+      ],
+    });
+  }
+
+  // Price Filtering
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    const priceQuery = {};
+    if (minPrice !== undefined) priceQuery.$gte = minPrice;
+    if (maxPrice !== undefined) priceQuery.$lte = maxPrice;
+
+    andConditions.push({
+      $or: [
+        { commercialLicensePrice: priceQuery },
+        { personalLicensePrice: priceQuery },
+        { extendedCommercialPrice: priceQuery },
+        { gameEnginePrice: priceQuery },
+        { broadcastFilmPrice: priceQuery },
+        { extendedRedistributionPrice: priceQuery },
+        { educationPrice: priceQuery },
+      ],
+    });
+  }
+
+  // Search Text Filtering
+  if (search) {
+    const searchRegex = new RegExp(search, "i");
+    andConditions.push({
+      $or: [
+        { title: searchRegex },
+        { description: searchRegex },
+        { tags: searchRegex },
+      ],
+    });
+  }
+
+  // Apply AND conditions if any exist
+  if (andConditions.length > 0) {
+    matchStage.$and = andConditions;
+  }
+
+  const pipeline = [{ $match: matchStage }];
+
+  // 2. Poly Count Extraction & Filtering (Only if range is specified)
+  if (minPoly !== undefined || maxPoly !== undefined) {
+    pipeline.push({
+      $addFields: {
+        polyCountExtracted: {
+          $regexFind: {
+            input: "$basicParametersText",
+            regex: /Polygon Count\s*\{\{ANSWER:"(\d+)"\}\}/i,
+          },
+        },
+      },
+    });
+
+    pipeline.push({
+      $addFields: {
+        polyCountValue: {
+          $convert: {
+            input: {
+              $arrayElemAt: ["$polyCountExtracted.captures", 0],
+            },
+            to: "int",
+            onError: null,
+            onNull: null,
+          },
+        },
+      },
+    });
+
+    const polyMatch = {};
+    if (minPoly !== undefined) polyMatch.$gte = minPoly;
+    if (maxPoly !== undefined) polyMatch.$lte = maxPoly;
+
+    pipeline.push({
+      $match: {
+        polyCountValue: polyMatch,
+      },
+    });
+  }
+
+  // 3. Sort & Limit
+  pipeline.push({ $sort: { createdAt: -1 } });
+  pipeline.push({ $limit: 30 });
+
+  console.log("🎵 Aggregation Pipeline:", JSON.stringify(pipeline, null, 2));
+
+  const assets = await ShareMusicAsset.aggregate(pipeline);
 
   console.log("🎵 Found assets:", assets.length);
 
@@ -231,8 +345,8 @@ const getAllAssets = async (userId = null, category = null) => {
   });
 
   // Format assets with userName and profilePicture from UserSpace
-  const formatted = assets.map((asset) => {
-    const obj = asset.toObject();
+  const formatted = assets.map((obj) => {
+    // const obj = asset; // Aggregate returns plain objects
     const userInfo = userSpaceMap[obj.createdBy] || {
       userName: "",
       profilePicture: "",

@@ -37,16 +37,27 @@ const updateAsset = catchAsync(async (req, res) => {
 const getAssets = catchAsync(async (req, res) => {
   let result = [];
 
-  // Extract category from query parameters
-  const { category } = req.query;
+  // Extract query parameters
+  const { category, search, minPrice, maxPrice, fileTypes, minPoly, maxPoly } =
+    req.query;
+
+  const filters = {
+    category,
+    search,
+    minPrice: minPrice ? Number(minPrice) : undefined,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined,
+    fileTypes: fileTypes ? fileTypes.split(",") : undefined,
+    minPoly: minPoly ? Number(minPoly) : undefined,
+    maxPoly: maxPoly ? Number(maxPoly) : undefined,
+  };
 
   // Check if user is authenticated
   if (req.user && req.user.id) {
     // If authenticated, get assets with user context and category filter
-    result = await shareMusicService.getAllAssets(req.user.id, category);
+    result = await shareMusicService.getAllAssets(req.user.id, filters);
   } else {
     // If not authenticated, get assets without user context but with category filter
-    result = await shareMusicService.getAllAssets(null, category);
+    result = await shareMusicService.getAllAssets(null, filters);
   }
 
   // Add cache-busting headers for security

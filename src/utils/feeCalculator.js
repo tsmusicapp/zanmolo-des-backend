@@ -13,12 +13,12 @@
 const calculateBuyerPayment = (orderAmount) => {
   const platformFeePercent = 0.08; // 8%
   const flatFee = 2; // $2 flat fee
-  const vatPercent = 0.0132; // 1.32% VAT
-  
+  const vatPercent = 0; // 0% VAT
+
   const platformFee = orderAmount * platformFeePercent;
   const vatAmount = orderAmount * vatPercent;
   const totalAmount = orderAmount + platformFee + flatFee + vatAmount;
-  
+
   return {
     orderAmount: parseFloat(orderAmount.toFixed(2)),
     platformFee: parseFloat(platformFee.toFixed(2)),
@@ -30,8 +30,8 @@ const calculateBuyerPayment = (orderAmount) => {
       platformFee: platformFee,
       flatFee: flatFee,
       vatAmount: vatAmount,
-      total: totalAmount
-    }
+      total: totalAmount,
+    },
   };
 };
 
@@ -41,15 +41,15 @@ const calculateBuyerPayment = (orderAmount) => {
  * @returns {object} Payout breakdown for seller
  */
 const calculateSellerPayout = (orderAmount) => {
-  const platformFeePercent = 0.10; // 10%
-  const vatPercent = 0.0132; // 1.32% VAT
+  const platformFeePercent = 0.1; // 10%
+  const vatPercent = 0; // 0% VAT
   // Note: Stripe processing fees are now charged on withdrawal, not on order completion
-  
+
   const platformFee = orderAmount * platformFeePercent;
   const vatAmount = orderAmount * vatPercent;
   const totalFees = platformFee + vatAmount;
   const netAmount = orderAmount - totalFees;
-  
+
   return {
     orderAmount: parseFloat(orderAmount.toFixed(2)),
     platformFee: parseFloat(platformFee.toFixed(2)),
@@ -63,8 +63,8 @@ const calculateSellerPayout = (orderAmount) => {
       squareProcessingFee: 0,
       vatAmount: vatAmount,
       totalFees: totalFees,
-      net: netAmount
-    }
+      net: netAmount,
+    },
   };
 };
 
@@ -76,10 +76,11 @@ const calculateSellerPayout = (orderAmount) => {
 const calculateOrderFees = (orderAmount) => {
   const buyerPayment = calculateBuyerPayment(orderAmount);
   const sellerPayout = calculateSellerPayout(orderAmount);
-  
+
   // Calculate platform profit (VAT is shared between buyer and seller)
-  const platformProfit = buyerPayment.platformFee + buyerPayment.flatFee - sellerPayout.platformFee;
-  
+  const platformProfit =
+    buyerPayment.platformFee + buyerPayment.flatFee - sellerPayout.platformFee;
+
   return {
     orderAmount: parseFloat(orderAmount.toFixed(2)),
     buyer: buyerPayment,
@@ -89,9 +90,9 @@ const calculateOrderFees = (orderAmount) => {
       breakdown: {
         fromBuyer: buyerPayment.platformFee + buyerPayment.flatFee,
         toSeller: sellerPayout.platformFee,
-        net: platformProfit
-      }
-    }
+        net: platformProfit,
+      },
+    },
   };
 };
 
@@ -104,12 +105,12 @@ const calculateOrderFees = (orderAmount) => {
 const validateFeeCalculation = () => {
   const testAmount = 100;
   const result = calculateOrderFees(testAmount);
-  
-  console.log('Fee Calculation Validation for $100 order:');
-  console.log('Buyer pays:', result.buyer.totalAmount); // Should be $111.32
-  console.log('Seller receives:', result.seller.netAmount); // Should be $88.68
-  console.log('Platform profit:', result.platform.profit); // Should be $0.10
-  
+
+  console.log("Fee Calculation Validation for $100 order:");
+  console.log("Buyer pays:", result.buyer.totalAmount); // Should be $111.32
+  console.log("Seller receives:", result.seller.netAmount); // Should be $88.68
+  console.log("Platform profit:", result.platform.profit); // Should be $0.10
+
   return result;
 };
 
@@ -117,5 +118,5 @@ module.exports = {
   calculateBuyerPayment,
   calculateSellerPayout,
   calculateOrderFees,
-  validateFeeCalculation
+  validateFeeCalculation,
 };

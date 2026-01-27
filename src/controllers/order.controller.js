@@ -176,10 +176,10 @@ const acceptOrder = async (req, res) => {
     const orderId = req.params.orderId;
     const userId = req.user._id;
 
-    // Update order status to accepted
+    // Update order status to inprogress
     const updatedOrder = await orderService.updateOrderStatus(
       orderId,
-      "accepted",
+      "inprogress",
       "Order accepted",
       userId,
       "accepted",
@@ -193,7 +193,7 @@ const acceptOrder = async (req, res) => {
       description: updatedOrder.description,
       price: updatedOrder.price,
       delivery_time: updatedOrder.delivery_time,
-      status: "accepted",
+      status: "inprogress",
       acceptedBy: userId.toString(),
       acceptedAt: new Date(),
     };
