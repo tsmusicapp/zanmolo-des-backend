@@ -83,11 +83,10 @@ const getOrderById = async (orderId, currentUser) => {
   const amCreator = createdById === currentUserId;
   const amRecruiter = recruiterId === currentUserId;
 
-  // Fix: The order structure seems to be backwards
-  // createdBy = seller, recruiterId = buyer in this system
-  let myRole = amCreator
+  // createdBy = seller (user), recruiterId = buyer (recruiter) in this system
+  let myRole = amRecruiter
     ? "recruiter"
-    : amRecruiter
+    : amCreator
     ? "user"
     : currentUser.role;
 
@@ -277,16 +276,7 @@ const updateOrderStatus = async (
 
 const addReviewAndRating = async (
   orderId,
-  {
-    rating,
-    review,
-    tip,
-    actorId = null,
-    buyerRating,
-    sellerRating,
-    buyerReview,
-    sellerReview,
-  },
+  { rating, review, tip, actorId = null, buyerRating, buyerReview },
 ) => {
   // Find the order by ID
   const order = await Order.findById(orderId);
@@ -294,56 +284,27 @@ const addReviewAndRating = async (
     throw new ApiError(httpStatus.NOT_FOUND, "Order not found");
   }
 
-  // Determine the buyer ID - recruiterId is the buyer, createdBy is the seller
+  // Determine roles
   const buyerId = order.recruiterId || order.buyer;
-
-  // ROLE-BASED MAPPING logic to handle payload mismatches
   const isBuyer =
     buyerId && actorId && buyerId.toString() === actorId.toString();
-  const isSeller =
-    order.createdBy &&
-    actorId &&
-    order.createdBy.toString() === actorId.toString();
 
-  // If Buyer is reviewing:
-  // They usually rate the Seller. So we expect sellerRating/sellerReview.
-  // If they incorrectly sent buyerRating (often happens in some payloads), we map it to sellerRating.
-  if (isBuyer) {
-    if ((buyerRating || rating) && !sellerRating) {
-      sellerRating = buyerRating || rating; // Map to sellerRating
-    }
-    if ((buyerReview || review) && !sellerReview) {
-      sellerReview = buyerReview || review; // Map to sellerReview
-    }
+  // ONLY Buyer can leave rating for Seller
+  if (!isBuyer) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      "Only the buyer can leave a review for this order",
+    );
   }
 
-  // If Seller is reviewing:
-  // They rate the Buyer. Expect buyerRating/buyerReview.
-  if (isSeller) {
-    if ((sellerRating || rating) && !buyerRating) {
-      buyerRating = sellerRating || rating; // Map to buyerRating
-    }
-    if ((sellerReview || review) && !buyerReview) {
-      buyerReview = sellerReview || review; // Map to buyerReview
-    }
-  }
+  // Map incoming data to buyer fields (Rating FOR the Seller)
+  order.buyerRating = buyerRating || rating;
+  order.buyerReview = buyerReview || review;
+  order.buyerReviewAt = new Date();
 
-  // Handle legacy single rating system (for backward compatibility)
-  if (rating && review) {
-    order.rating = rating;
-    order.review = review;
-  }
-
-  // Handle new dual rating system - allow individual ratings
-  if (buyerRating && buyerReview) {
-    order.buyerRating = buyerRating;
-    order.buyerReview = buyerReview;
-  }
-
-  if (sellerRating && sellerReview) {
-    order.sellerRating = sellerRating;
-    order.sellerReview = sellerReview;
-  }
+  // For backward compatibility with legacy fields if needed
+  order.rating = order.buyerRating;
+  order.review = order.buyerReview;
 
   // Update tip and total amount
   order.tip = tip || 0;
@@ -359,9 +320,7 @@ const addReviewAndRating = async (
       rating: rating || buyerRating,
       tip: tip || 0,
       buyerRating,
-      sellerRating,
       buyerReview,
-      sellerReview,
     },
   });
 
@@ -467,8 +426,8 @@ const submitReviewReply = async (orderId, reply, actorId) => {
     throw new ApiError(httpStatus.BAD_REQUEST, "Reply already submitted");
   }
 
-  order.buyerReviewReply = reply;
-  order.buyerReviewReplyAt = new Date();
+  order.sellerReply = reply;
+  order.sellerRepliedAt = new Date();
 
   // Log activity
   order.activities = order.activities || [];
@@ -614,15 +573,36 @@ const getCompletedOrders = async (user) => {
   return formattedOrders;
 };
 
+/**
+ * Get reviews for a user (where they are the seller)
+ * @param {string} userId - The seller's user ID
+ * @returns {Promise<Order[]>}
+ */
+const getUserSellerReviews = async (userId) => {
+  return Order.find({
+    createdBy: userId,
+    status: "complete",
+    $or: [
+      { buyerRating: { $exists: true, $gt: 0 } },
+      { buyerReview: { $exists: true, $ne: "" } },
+    ],
+  })
+    .populate("recruiterId", "name profilePicture")
+    .select(
+      "buyerRating buyerReview buyerReviewAt sellerReply sellerRepliedAt createdAt recruiterId title",
+    )
+    .sort({ createdAt: -1 });
+};
+
 module.exports = {
   createOrder,
   getOrderById,
-  updateOrderStatus,
   updateOrderStatus,
   addReviewAndRating,
   submitReviewReply,
   getMyOrders,
   getCompletedOrders,
+  getUserSellerReviews, // Export the new function
   async extendDelivery(orderId, extraDays, actorId) {
     if (!Number.isFinite(extraDays) || extraDays <= 0) {
       throw new ApiError(

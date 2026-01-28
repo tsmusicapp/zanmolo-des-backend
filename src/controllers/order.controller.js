@@ -1607,6 +1607,12 @@ const getOrderPaymentDetails = async (req, res) => {
   }
 };
 
+const getUserSellerReviews = catchAsync(async (req, res) => {
+  const userId = req.params.userId;
+  const reviews = await orderService.getUserSellerReviews(userId);
+  res.status(httpStatus.OK).send(reviews);
+});
+
 module.exports = {
   createOrder,
   getOrder,
@@ -1635,4 +1641,5 @@ module.exports = {
   createPaypalOrder,
   capturePaypalOrder,
   getOrderPaymentDetails,
+  getUserSellerReviews,
 };

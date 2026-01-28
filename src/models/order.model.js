@@ -167,22 +167,18 @@ const orderSchema = mongoose.Schema(
       minlength: 10,
       maxlength: 200,
     },
-    sellerRating: {
-      type: Number,
-      min: 1,
-      max: 5,
+    buyerReviewAt: {
+      type: Date,
     },
-    sellerReview: {
-      type: String,
-      minlength: 10,
-      maxlength: 200,
+    buyerReviewAt: {
+      type: Date,
     },
-    buyerReviewReply: {
+    sellerReply: {
       type: String,
       minlength: 10,
       maxlength: 500,
     },
-    buyerReviewReplyAt: {
+    sellerRepliedAt: {
       type: Date,
     },
     tip: {

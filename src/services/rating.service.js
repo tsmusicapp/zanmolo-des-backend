@@ -26,20 +26,20 @@ class RatingService {
       const ratedOrders = await Order.find({
         createdBy: userId,
         status: "complete",
-        sellerRating: { $exists: true, $gte: 1 },
+        buyerRating: { $exists: true, $gte: 1 },
       });
 
       const reviewOrders = await Order.find({
         createdBy: userId,
         status: "complete",
-        sellerReview: { $exists: true, $ne: null },
+        buyerReview: { $exists: true, $ne: null },
       });
       const totalReviews = reviewOrders.length;
 
       let averageRating = 0;
       if (ratedOrders.length > 0) {
         averageRating =
-          ratedOrders.reduce((sum, order) => sum + order.sellerRating, 0) /
+          ratedOrders.reduce((sum, order) => sum + order.buyerRating, 0) /
           ratedOrders.length;
       }
 

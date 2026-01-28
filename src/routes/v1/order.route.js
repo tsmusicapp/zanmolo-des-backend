@@ -33,6 +33,8 @@ router.get(
   orderController.getOrder,
 );
 
+router.get("/reviews/user/:userId", orderController.getUserSellerReviews);
+
 // Update order status
 router.put(
   "/:orderId/status",
